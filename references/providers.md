@@ -14,7 +14,7 @@ Transport adapters only start workers and capture their final output. Contracts,
 Current DeepSeek documentation lists `deepseek-v4-flash` and `deepseek-v4-pro` through an OpenAI-compatible endpoint. OpenCode has a built-in DeepSeek provider and identifies models as `provider/model`. The current worker ID is therefore `deepseek/deepseek-v4-flash`. Check the current model list before relying on an ID because provider catalogs change.
 
 1. Install OpenCode using its official instructions.
-2. In OpenCode, run `/connect`, choose DeepSeek, and enter the API key. Alternatively use `opencode auth login`. LunarMarch intentionally strips API-key environment variables from OpenCode child processes, so use OpenCode's credential store rather than an environment-only key.
+2. In OpenCode, run `/connect`, choose DeepSeek, and enter the API key. Alternatively use `opencode auth login`. OpenCode saves `/connect` credentials in its local credential store. LunarMarch intentionally strips API-key environment variables from OpenCode child processes, so this saved credential is the required setup for LunarMarch workers.
 3. Run `opencode models deepseek` and confirm the exact model ID.
 4. Never add the key to a task contract, prompt, shell argument, committed `.env`, or LunarMarch run root.
 5. Launch a bounded worker:

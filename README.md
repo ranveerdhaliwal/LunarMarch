@@ -64,7 +64,7 @@ python3 scripts/lunarmarch.py launch \
   --run-checks
 ```
 
-OpenCode stores the DeepSeek credential; LunarMarch never reads or records the API key. See [references/providers.md](references/providers.md) for setup, the Sol-orchestrator/DeepSeek-worker design, permission differences, and how to add another transport.
+OpenCode stores the DeepSeek credential; LunarMarch never reads or records the API key. LunarMarch workers require that saved OpenCode credential because their child environment excludes API keys. See [references/providers.md](references/providers.md) for setup, the Sol-orchestrator/DeepSeek-worker design, permission differences, and how to add another transport.
 
 The OpenCode adapter is covered by fake-CLI integration and permission-policy tests. No paid DeepSeek call was made in this repository yet; the first authenticated smoke test remains pending until a key and OpenCode installation are available.
 
