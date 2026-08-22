@@ -1,0 +1,6 @@
+interface:
+  display_name: "LunarMarch"
+  short_description: "Orchestrate Luna-first multi-step work"
+  default_prompt: "Use $lunar-march to execute this project with bounded Luna workers and durable evidence."
+policy:
+  allow_implicit_invocation: true

@@ -1,0 +1,25 @@
+{
+  "task_id": "users-pagination",
+  "phase": "main",
+  "objective": "Add cursor pagination to the users endpoint without changing its authorization behavior.",
+  "role_hint": "builder",
+  "risk": "routine",
+  "allowed_paths": [
+    "src/users",
+    "tests/users"
+  ],
+  "acceptance_commands": [
+    "python3 -m unittest discover -s tests/users -v"
+  ],
+  "requirements": [
+    "The endpoint returns a stable next cursor when another page exists.",
+    "Invalid cursors produce the existing client-error shape.",
+    "Authorization behavior remains unchanged."
+  ],
+  "inputs": [],
+  "non_goals": [
+    "Do not change the database schema.",
+    "Do not redesign unrelated endpoints."
+  ],
+  "depends_on": []
+}

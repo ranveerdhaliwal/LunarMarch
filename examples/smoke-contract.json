@@ -1,0 +1,18 @@
+{
+  "task_id": "clamp-count",
+  "phase": "main",
+  "objective": "Implement clamp_count(value, lower, upper) in counter.py so the supplied tests pass.",
+  "role_hint": "builder",
+  "risk": "trivial",
+  "allowed_paths": ["counter.py", "tests"],
+  "acceptance_commands": ["python3 -m unittest discover -s tests -v"],
+  "requirements": [
+    "Values below lower return lower.",
+    "Values above upper return upper.",
+    "Values inside the inclusive range are unchanged.",
+    "lower greater than upper raises ValueError."
+  ],
+  "inputs": ["counter.py", "tests/test_counter.py"],
+  "non_goals": ["Do not add dependencies.", "Do not change increment behavior."],
+  "depends_on": []
+}

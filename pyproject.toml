@@ -1,0 +1,9 @@
+[project]
+name = "lunarmarch"
+version = "0.1.0"
+description = "Luna-first orchestration for bounded tasks, research, and long-running projects"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
