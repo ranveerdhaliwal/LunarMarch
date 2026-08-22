@@ -1,0 +1,1 @@
+Implement `canonical_handle` in `handles.py` according to the supplied context packet. Preserve the public function name and keep changes inside `handles.py`. Run the existing tests and report the verification actually performed.

@@ -42,7 +42,11 @@ python3 <skill>/scripts/lunarmarch.py launch \
 
 The external launcher pins the model and reasoning effort and disables nested delegation. It is a fallback transport, not a semantic shortcut.
 
+For native workers, default to no inherited conversation and send a compact, resolved task contract with exact file or artifact paths. Shared workspace files are the context plane; worker prompts are the control plane. Pass a small recent-turn window only when uncaptured conversational nuance is necessary. Pass full history only when the task genuinely depends on the conversation itself. Workers do not receive later parent discoveries automatically; send material updates explicitly.
+
 Read [references/routing.md](references/routing.md) before premium escalation, concurrency above two writers, or transport fallback. Read [references/roles.md](references/roles.md) when authoring a worker packet.
+
+When changing context, model, effort, or routing policy based on performance claims, read [references/context-evaluation.md](references/context-evaluation.md) and measure representative repeated trials before adopting the change.
 
 ## Durable run interface
 

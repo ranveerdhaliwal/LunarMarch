@@ -26,6 +26,7 @@ RUNTIME_ENTRIES = (
     "references",
     "schemas",
     "examples",
+    "evals",
 )
 
 

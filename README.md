@@ -54,6 +54,10 @@ The launcher requires an installed, authenticated Codex CLI with access to `gpt-
 
 The model-backed procedure is documented in [references/live-test.md](references/live-test.md). It uses a disposable intentionally-failing fixture, a Luna Builder, a fresh Luna Reviewer, objective gates, and explicit parent acceptance.
 
+## Measured context policy
+
+Native workers default to no inherited conversation plus a compact resolved contract and exact workspace paths. A bundled evaluator measures whether that saves usage without degrading task quality. It uses opaque trial identities, counterbalanced order, deterministic hidden graders, authoritative terminal usage telemetry, and completeness checks. See [the evaluation protocol](references/context-evaluation.md). A clean blinded result will be linked here after it is rerun.
+
 ## Installation as a skill
 
 For every local Codex chat:

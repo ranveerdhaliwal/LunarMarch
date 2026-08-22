@@ -1,0 +1,47 @@
+{
+  "format": "lunarmarch-context-suite-v1",
+  "conditions": ["thin", "recent", "contract", "contract-padded", "full"],
+  "scope_weight": 10,
+  "cases": [
+    {
+      "id": "canonical-handle",
+      "project": "cases/canonical-handle/project",
+      "task": "cases/canonical-handle/task.md",
+      "allowed_paths": ["handles.py"],
+      "contexts": {
+        "thin": [{"path": "cases/canonical-handle/context/thin.md", "repeat": 1}],
+        "recent": [{"path": "cases/canonical-handle/context/recent.md", "repeat": 1}],
+        "contract": [{"path": "cases/canonical-handle/context/contract.md", "repeat": 1}],
+        "contract-padded": [
+          {"path": "cases/canonical-handle/context/contract.md", "repeat": 1},
+          {"path": "cases/canonical-handle/context/distractor.md", "repeat": 24}
+        ],
+        "full": [
+          {"path": "cases/canonical-handle/context/full.md", "repeat": 1},
+          {"path": "cases/canonical-handle/context/distractor.md", "repeat": 24}
+        ]
+      },
+      "grader_tests": "cases/canonical-handle/hidden_tests",
+      "graders": [
+        {
+          "name": "hidden-behavior",
+          "command": ["python3", "-m", "unittest", "discover", "-s", "{grader_tests}", "-v"],
+          "kind": "unittest",
+          "weight": 70
+        },
+        {
+          "name": "public-tests",
+          "command": ["python3", "-m", "unittest", "discover", "-s", "tests", "-v"],
+          "kind": "unittest",
+          "weight": 15
+        },
+        {
+          "name": "compilation",
+          "command": ["python3", "-m", "py_compile", "handles.py"],
+          "kind": "exit-code",
+          "weight": 5
+        }
+      ]
+    }
+  ]
+}

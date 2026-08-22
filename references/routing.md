@@ -24,6 +24,20 @@ Use measured evidence to change these defaults. `max` is not a ceremonial qualit
 
 Read-only Scouts may fan out when their questions are distinct. Start with at most four and expand only when the evidence map justifies it. Start with one writer; allow two only in separate worktrees with non-overlapping ownership. Never permit overlapping writers in one checkout.
 
+## Context inheritance
+
+Native subagents have separate context windows. Depending on the host, they may receive all parent turns, a bounded recent window, or no surrounding turns. They share workspace files but do not continuously share the parent's later conversation.
+
+Use the smallest sufficient context:
+
+- Default to no inherited turns plus a compact resolved contract, exact paths, and required evidence.
+- Use a small recent-turn window only when recent intent has not yet been captured in durable artifacts.
+- Use full-history inheritance only for conversation-dependent interpretation where compression would remove material ambiguity.
+- Send new facts explicitly after launch; never assume a worker learned them from the parent automatically.
+- Keep worker reports bounded because returned prose also consumes parent synthesis context.
+
+Do not confuse `no inherited turns` with `no context`. The contract and referenced workspace artifacts must still contain every fact needed to perform and verify the task. Missing context and excess context are separate failure modes.
+
 ## Escalate when
 
 - two bounded Luna attempts fail the same criterion;
@@ -37,3 +51,5 @@ Escalation changes the consumer or decision-maker; it does not retroactively val
 ## Transport
 
 Prefer native tasks when the host proves the requested model and sandbox were applied. Use external `codex exec` when native routing cannot bind Luna or when larger fan-out needs an independent process pool. Record requested identity as a fact about launch configuration, not proof of remote runtime identity unless session records establish it.
+
+The external launcher starts a fresh conversation and sends only the generated worker packet. This approximates native no-history delegation and makes prompt size inspectable. Native and external results are not interchangeable evidence when their system instructions or tools differ; compare context policies within one transport before comparing transports.
