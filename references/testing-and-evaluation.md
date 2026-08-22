@@ -17,7 +17,7 @@ This document records what LunarMarch has actually tested, what each test establ
 
 As of 2026-08-22:
 
-- 28 offline automated tests pass.
+- 35 offline automated tests pass.
 - Python compilation passes for the evaluator and orchestration scripts.
 - The Codex skill validator passes.
 - The user-wide installation is a valid symlink to this repository.
@@ -39,7 +39,7 @@ python3 -m unittest discover -s tests -v
 
 CI runs the suite on Python 3.11, 3.12, and 3.13. CI also compiles `scripts/` and `tests/`, exercises the command interface, and validates that the context-evaluation suite can be planned.
 
-### Orchestration and integrity tests: 18
+### Orchestration, transport, and integrity tests: 23
 
 | Test | What it verifies |
 |---|---|
@@ -56,13 +56,18 @@ CI runs the suite on Python 3.11, 3.12, and 3.13. CI also compiles `scripts/` an
 | `test_acceptance_rejects_project_movement_after_review` | Parent acceptance fails if the project changes after the accepted review evidence was produced. |
 | `test_external_launcher_pins_luna_and_completes_attempt` | The external writer launcher requests `gpt-5.6-luna`, binds effort, uses the intended approval mode, and records completion. |
 | `test_read_only_launcher_uses_explicit_sandbox_without_auto_approval` | Reviewers receive an explicit read-only sandbox and never automatic write approval. |
+| `test_opencode_launcher_captures_report_and_binds_transport` | An OpenCode/DeepSeek-style worker is bound to its transport, model, and variant; stdout becomes immutable report evidence and the logged command redacts the prompt. |
+| `test_opencode_readonly_policy_denies_mutation_and_delegation` | OpenCode read-only workers deny edits, shell, nested tasks, and external-directory access and never receive auto approval. |
+| `test_opencode_transport_sanitizes_environment_and_rejects_bad_sandbox` | Third-party workers do not inherit API-key environment variables, and unknown sandbox modes fail closed. |
+| `test_worker_timeout_is_bounded_and_terminal` | A timed-out worker is terminated promptly and recorded with exit code 124 instead of leaving the attempt active. |
+| `test_cli_forwards_worker_timeout` | The public launch command forwards its configured worker timeout to the launcher. |
 | `test_march_phase_requires_freeze_and_auditor` | March-mode phase acceptance requires frozen source evidence and a distinct Auditor. |
 | `test_user_style_symlink_install_is_idempotent` | Reinstalling the same user-wide symlink is safe and idempotent. |
 | `test_repo_style_copy_install_has_matching_fingerprint` | A repository-local copied skill matches the source bundle fingerprint. |
 | `test_installer_refuses_silent_overwrite` | Installation refuses to replace an unrelated destination silently. |
 | `test_installer_replace_preserves_backup` | Explicit replacement preserves the displaced installation as a recoverable backup. |
 
-### Context-evaluator tests: 10
+### Context-evaluator tests: 12
 
 | Test | What it verifies |
 |---|---|
@@ -76,6 +81,8 @@ CI runs the suite on Python 3.11, 3.12, and 3.13. CI also compiles `scripts/` an
 | `test_decision_requires_five_quality_preserving_token_pairs` | Endorsement requires complete quality and token pairs; partial rosters and missing telemetry are ineligible. |
 | `test_fake_live_run_scores_and_summarizes` | A disposable fake CLI exercises copying, worker execution, grading, usage collection, integrity checks, and summary generation end to end. |
 | `test_trial_copy_excludes_source_repository_metadata` | Source `.git` metadata and its potentially revealing contents are not copied into worker projects. |
+| `test_checkpointed_run_resumes_same_manifest` | A partial balanced run remains ineligible, then resumes the same immutable manifest without repeating completed trials and becomes complete. |
+| `test_checkpoint_resume_rejects_tampered_completed_trial` | Each finished trial is sealed into the manifest; editing a result before resume is rejected. |
 
 These are regression tests for observable invariants. They do not merely assert that documentation contains particular wording.
 
@@ -240,6 +247,21 @@ python3 scripts/context_eval.py run \
 
 Live execution consumes model usage and requires an installed authenticated Codex CLI. Do not publish a run that used `--allow-dirty-suite`.
 
+Run only two new trials at a time:
+
+```bash
+python3 scripts/context_eval.py run \
+  --suite evals/context-efficiency/suite.json \
+  --output /tmp/lunarmarch-context-eval \
+  --conditions contract contract-padded \
+  --repetitions 6 --seed 20260822 \
+  --model gpt-5.6-luna --effort high \
+  --quality-tolerance 2 \
+  --max-new-trials 2
+```
+
+Repeat the exact command with `--resume` on another day. The partial result is retained but cannot pass the decision rule until the complete balanced roster exists.
+
 ## Plan and estimate for additional fixtures
 
 The next benchmark should add three to five fixtures with different failure surfaces:
@@ -250,7 +272,7 @@ The next benchmark should add three to five fixtures with different failure surf
 4. **Resumable multi-phase work:** interrupt and resume a March run, then verify phase barriers, durable state, integration, and recovery behavior.
 5. **Reviewer/Fixer recovery:** seed a plausible implementation defect, require independent review, bounded correction, regression checks, and final acceptance evidence.
 
-The estimates below assume six compact-versus-padded pairs, or 12 live workers, per fixture:
+The estimates below assume six compact-versus-padded pairs, or 12 live workers, per fixture. They describe total engineering time, not one required continuous session.
 
 | Work | Three additional fixtures | Five additional fixtures |
 |---|---:|---:|
@@ -264,3 +286,17 @@ The estimates below assume six compact-versus-padded pairs, or 12 live workers, 
 Three additional fixtures are realistic in one focused working day. Five are more realistically one long day or two normal sessions. Research and resumability fixtures may require small evaluator extensions, so they carry more schedule risk than ordinary coding fixtures.
 
 Running trials concurrently could reduce wall-clock time, but it risks adding load, cache, and contention effects to a context experiment. Sequential execution is the safer default unless concurrency is itself an explicit controlled factor.
+
+### Bite-sized execution plan
+
+Each fixture is an independent evidence unit and can be spread across days:
+
+1. **Design checkpoint, 30–60 minutes and no model usage:** write the task, compact packet, padded packet, public tests, hidden grader, and declared paths.
+2. **Offline checkpoint, 5–15 minutes and no model usage:** validate the suite, run the fake CLI end to end, and inspect leakage boundaries.
+3. **Pilot checkpoint, one matched order block:** run two trials. Treat the output only as plumbing and failure-surface evidence.
+4. **Completion checkpoints:** run two new trials at a time using `--resume`. Six two-trial checkpoints complete one 12-trial fixture.
+5. **Audit checkpoint, 15–30 minutes and no model usage:** inspect every trial, publish the aggregate, and decide whether the next fixture is worth funding.
+
+Nothing requires completing three or five fixtures before learning something. Finish and publish one fixture at a time. Stop after any fixture if the result is already unstable, the grader is not discriminating, or the next experiment is not worth its usage.
+
+For minimum-cost development, validate new fixtures first with fake CLIs and then with inexpensive OpenCode/DeepSeek workers. Keep those results in a separate provider series because OpenCode and Codex telemetry and tool policies differ. Reserve Luna cross-checks for fixtures that survive the cheap pilot and answer a decision worth testing.

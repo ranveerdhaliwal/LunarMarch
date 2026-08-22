@@ -1,7 +1,7 @@
 [project]
 name = "lunarmarch"
-version = "0.1.0"
-description = "Luna-first orchestration for bounded tasks, research, and long-running projects"
+version = "0.2.0"
+description = "Luna-first, provider-aware orchestration for bounded and long-running work"
 requires-python = ">=3.11"
 license = { text = "MIT" }
 

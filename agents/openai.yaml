@@ -1,6 +1,6 @@
 interface:
   display_name: "LunarMarch"
-  short_description: "Orchestrate Luna-first multi-step work"
-  default_prompt: "Use $lunar-march to execute this project with bounded Luna workers and durable evidence."
+  short_description: "Orchestrate bounded multi-model work"
+  default_prompt: "Use $lunar-march to execute this project with durable evidence, using Luna by default or an explicitly selected OpenCode worker."
 policy:
   allow_implicit_invocation: true

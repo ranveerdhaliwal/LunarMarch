@@ -4,13 +4,13 @@ LunarMarch is a standalone skill bundle. Install it in one of two scopes.
 
 ## User-wide
 
-Use this when LunarMarch should appear in every local Codex chat for the current user:
+Use this when LunarMarch should appear in every local Codex or OpenCode chat for the current user:
 
 ```bash
 python3 /absolute/path/to/LunarMarch/scripts/install_skill.py --scope user
 ```
 
-The default creates a symlink at `$HOME/.agents/skills/lunar-march`, so edits in the LunarMarch repository are immediately visible to newly loaded chats.
+The default creates a symlink at `$HOME/.agents/skills/lunar-march`, so edits in the LunarMarch repository are immediately visible to newly loaded chats. Both Codex and OpenCode discover the agent-compatible location.
 
 ## Repository-scoped
 
@@ -37,7 +37,7 @@ $lunar-march research this subsystem using three independent read-only angles, t
 $lunar-march execute the plan at plans/migration.md as a resumable march. Keep Luna as the default worker and stop only for a real authorization boundary.
 ```
 
-Codex may also invoke LunarMarch implicitly when a request matches its description. Explicit `$lunar-march` invocation is best for deliberate orchestration and makes delegation intent unambiguous.
+Codex or OpenCode may also invoke LunarMarch implicitly when a request matches its description. Explicit `$lunar-march` invocation is best for deliberate orchestration and makes delegation intent unambiguous.
 
 Skill edits are normally detected automatically. Restart Codex if a newly installed or updated skill is not visible.
 

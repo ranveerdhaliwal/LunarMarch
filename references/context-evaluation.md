@@ -57,6 +57,26 @@ python3 <skill>/scripts/context_eval.py run \
 
 The runner uses `codex exec --json`, fresh project copies, randomized trial order, hidden post-run graders, source snapshots, and a machine-readable result per trial. It writes `summary.json` and `report.md`. Running it consumes model usage and may require permission for nested Codex access to authenticated local state.
 
+### Run it in small checkpoints
+
+Predeclare the complete balanced run but execute only one or two new trials:
+
+```bash
+python3 <skill>/scripts/context_eval.py run \
+  --suite <skill>/evals/context-efficiency/suite.json \
+  --output /tmp/lunarmarch-context-eval \
+  --conditions contract contract-padded \
+  --repetitions 6 --seed 20260822 \
+  --model gpt-5.6-luna --effort high \
+  --max-new-trials 2
+```
+
+Continue the same immutable run later by repeating the exact arguments and adding `--resume`. The evaluator verifies the expected trial plan, model, effort, CLI version, suite-content fingerprint, and evaluator hash before continuing. It skips completed trials and runs at most the requested number of pending trials.
+
+Every checkpoint writes a summary with `checkpoint.remaining_trials`. Partial runs remain `run_integrity.complete: false` and decision-ineligible. Each completed trial is also sealed: a hash inventory of its prompt, events, report, copied project, graders, and result is written inside the trial, and that seal is immediately bound into the run manifest. Resume and summarize reject changed or unsealed completed artifacts. This makes spending interruptible without turning a small, imbalanced or edited sample into a claim. If a process is interrupted inside a trial, the incomplete directory is retained for diagnosis and the evaluator refuses automatic reuse of that run root.
+
+These hashes provide consistency and accidental-tamper detection, not hostile-storage security. A person who can rewrite the entire run root can also rewrite its local seals. For adversarial provenance, publish the manifest and seal hashes to an independently controlled signed release, transparency log, or other trusted store.
+
 Use `--conditions contract full --repetitions 2` only as a position-balanced plumbing smoke test. It is not enough evidence for a quality claim.
 
 Only publish a result produced from a clean suite commit with `dirty_suite_override` set to `false`, a complete expected-trial roster, and telemetry for every paired trial. An earlier diagnostic run exposed condition labels in filesystem paths and was intentionally invalidated rather than cited as evidence.

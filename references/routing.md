@@ -50,6 +50,8 @@ Escalation changes the consumer or decision-maker; it does not retroactively val
 
 ## Transport
 
-Prefer native tasks when the host proves the requested model and sandbox were applied. Use external `codex exec` when native routing cannot bind Luna or when larger fan-out needs an independent process pool. Record requested identity as a fact about launch configuration, not proof of remote runtime identity unless session records establish it.
+Prefer native tasks when the host proves the requested model and sandbox were applied. Use external `codex exec` for Luna or `opencode run` for an explicitly selected provider model. Record requested identity as a fact about launch configuration, not proof of remote runtime identity unless session records establish it.
 
 The external launcher starts a fresh conversation and sends only the generated worker packet. This approximates native no-history delegation and makes prompt size inspectable. Native and external results are not interchangeable evidence when their system instructions or tools differ; compare context policies within one transport before comparing transports.
+
+The durable contract, source snapshot, terminal record, gate, and independent-review rule are transport-neutral. The OpenCode adapter supplies a conservative child-agent policy: nested tasks, external directories, web access, and skills are denied; read-only roles also deny edits and shell. OpenCode permissions are not an operating-system sandbox, so use Codex sandboxing or another isolated runtime for hostile or high-risk work. Read [providers.md](providers.md) before selecting or adding a transport.

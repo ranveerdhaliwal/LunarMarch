@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import json
+import io
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 
@@ -26,6 +29,8 @@ from lm_core import (  # noqa: E402
     status_summary,
 )
 from install_skill import InstallError, bundle_fingerprint, install, inspect_installation  # noqa: E402
+from worker_transports import build_worker_invocation, default_model_for_transport  # noqa: E402
+from lunarmarch import main as cli_main  # noqa: E402
 
 
 class LunarMarchTests(unittest.TestCase):
@@ -261,6 +266,142 @@ sys.stdin.read()
         self.assertEqual(command[command.index("-s") + 1], "read-only")
         self.assertNotIn("--approve-for-me", command)
         self.assertTrue(gate_attempt(self.run, attempt)["clear"])
+
+    def test_opencode_launcher_captures_report_and_binds_transport(self) -> None:
+        self.add_contract(acceptance_commands=[])
+        fake = Path(self.temporary.name) / "fake-opencode"
+        fake.write_text(
+            """#!/usr/bin/env python3
+import pathlib
+import sys
+args = sys.argv[1:]
+project = pathlib.Path(args[args.index('--dir') + 1])
+project.joinpath('src/app.py').write_text('VALUE = 4\\n', encoding='utf-8')
+print('DeepSeek worker completed with bounded evidence.')
+""",
+            encoding="utf-8",
+        )
+        fake.chmod(0o755)
+        attempt, terminal = launch_worker(
+            self.run,
+            "demo-task",
+            "builder",
+            "deepseek/deepseek-v4-flash",
+            None,
+            str(fake),
+            False,
+            30,
+            "opencode",
+            "thinking",
+        )
+        self.assertEqual(terminal["exit_code"], 0)
+        reservation = json.loads((attempt / "reservation.json").read_text(encoding="utf-8"))
+        self.assertEqual(reservation["transport"], "opencode")
+        self.assertEqual(reservation["model"], "deepseek/deepseek-v4-flash")
+        self.assertEqual(reservation["variant"], "thinking")
+        self.assertIn("DeepSeek worker completed", (attempt / "report.md").read_text(encoding="utf-8"))
+        log = (attempt / "worker.log").read_text(encoding="utf-8")
+        command = json.loads(log.splitlines()[0].removeprefix("command="))
+        self.assertIn("--file", command)
+        self.assertEqual(command[command.index("--file") + 1], str(attempt / "prompt.md"))
+        self.assertNotIn((attempt / "prompt.md").read_text(encoding="utf-8"), command)
+        self.assertIn("--pure", command)
+        self.assertIn("--auto", command)
+        self.assertTrue(gate_attempt(self.run, attempt)["clear"])
+
+    def test_opencode_readonly_policy_denies_mutation_and_delegation(self) -> None:
+        self.assertEqual(default_model_for_transport("codex"), "gpt-5.6-luna")
+        self.assertEqual(default_model_for_transport("opencode"), "deepseek/deepseek-v4-flash")
+        invocation = build_worker_invocation(
+            "opencode",
+            "/usr/bin/opencode",
+            self.project,
+            "deepseek/deepseek-v4-flash",
+            None,
+            None,
+            "read-only",
+            self.run / "report.md",
+            self.run / "prompt.md",
+            "Review only.",
+        )
+        config = json.loads(invocation.env["OPENCODE_CONFIG_CONTENT"])
+        agent_name = invocation.command[invocation.command.index("--agent") + 1]
+        permission = config["agent"][agent_name]["permission"]
+        self.assertEqual(permission["edit"], "deny")
+        self.assertEqual(permission["bash"], "deny")
+        self.assertEqual(permission["task"], "deny")
+        self.assertEqual(permission["external_directory"], "deny")
+        self.assertNotIn("--auto", invocation.command)
+
+    def test_opencode_transport_sanitizes_environment_and_rejects_bad_sandbox(self) -> None:
+        with patch.dict("os.environ", {"DEEPSEEK_API_KEY": "must-not-leak", "PATH": "/usr/bin"}, clear=True):
+            invocation = build_worker_invocation(
+                "opencode",
+                "/usr/bin/opencode",
+                self.project,
+                "deepseek/deepseek-v4-flash",
+                None,
+                None,
+                "workspace-write",
+                self.run / "report.md",
+                self.run / "prompt.md",
+                "Implement the task.",
+            )
+        self.assertNotIn("DEEPSEEK_API_KEY", invocation.env)
+        self.assertEqual(invocation.env["PATH"], "/usr/bin")
+        with self.assertRaisesRegex(ValueError, "unsupported worker sandbox"):
+            build_worker_invocation(
+                "opencode",
+                "/usr/bin/opencode",
+                self.project,
+                "deepseek/deepseek-v4-flash",
+                None,
+                None,
+                "danger-full-access",
+                self.run / "report.md",
+                self.run / "prompt.md",
+                "Implement the task.",
+            )
+
+    def test_worker_timeout_is_bounded_and_terminal(self) -> None:
+        self.add_contract(acceptance_commands=[])
+        fake = Path(self.temporary.name) / "slow-opencode"
+        fake.write_text(
+            "#!/usr/bin/env python3\nimport time\ntime.sleep(10)\n",
+            encoding="utf-8",
+        )
+        fake.chmod(0o755)
+        started = time.monotonic()
+        attempt, terminal = launch_worker(
+            self.run,
+            "demo-task",
+            "builder",
+            "deepseek/deepseek-v4-flash",
+            None,
+            str(fake),
+            False,
+            30,
+            "opencode",
+            None,
+            0.05,
+        )
+        self.assertLess(time.monotonic() - started, 2)
+        self.assertEqual(terminal["exit_code"], 124)
+        self.assertIn("worker timed out", (attempt / "worker.log").read_text(encoding="utf-8"))
+
+    def test_cli_forwards_worker_timeout(self) -> None:
+        with patch("lunarmarch.launch_worker", return_value=(self.run, {"exit_code": 0})) as mocked:
+            with patch("sys.stdout", io.StringIO()):
+                self.assertEqual(
+                    cli_main(
+                        [
+                            "launch", "--run-root", str(self.run), "--task-id", "demo-task",
+                            "--role", "builder", "--worker-bin", "/fake/worker", "--worker-timeout", "17",
+                        ]
+                    ),
+                    0,
+                )
+        self.assertEqual(mocked.call_args.args[-1], 17)
 
     def test_march_phase_requires_freeze_and_auditor(self) -> None:
         march_run = Path(self.temporary.name) / "march-run"

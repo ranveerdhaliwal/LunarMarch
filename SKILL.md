@@ -1,6 +1,6 @@
 ---
 name: lunar-march
-description: Orchestrate research, bounded implementation, review, recovery, and long-running multi-part projects with GPT-5.6 Luna workers, durable contracts, and objective integrity gates. Use when work benefits from explicit delegation or resumable multi-step execution; do not use for a single simple action that the current agent can complete directly.
+description: Orchestrate research, bounded implementation, review, recovery, and long-running multi-part projects with Luna-first or OpenCode workers, durable contracts, and objective integrity gates. Use when work benefits from explicit delegation or resumable multi-step execution; do not use for a single simple action that the current agent can complete directly.
 license: MIT
 metadata:
   short-description: Luna-first durable task orchestration
@@ -8,7 +8,7 @@ metadata:
 
 # LunarMarch
 
-Use Luna as the high-volume workforce while the parent retains authority, decomposition, consequential judgment, and final acceptance.
+Use Luna as the default high-volume workforce while the parent retains authority, decomposition, consequential judgment, and final acceptance. OpenCode is the supported provider-neutral transport for DeepSeek and future inexpensive workers; changing transport never weakens contracts, gates, or review requirements.
 
 When asked to install, share, or use LunarMarch from another chat, read [references/installation.md](references/installation.md).
 
@@ -41,6 +41,8 @@ python3 <skill>/scripts/lunarmarch.py launch \
 ```
 
 The external launcher pins the model and reasoning effort and disables nested delegation. It is a fallback transport, not a semantic shortcut.
+
+For DeepSeek or another OpenCode model, read [references/providers.md](references/providers.md), then launch with `--transport opencode --model provider/model`. Keep credentials in the provider or OpenCode credential store, never in contracts, prompts, run state, or repository files.
 
 For native workers, default to no inherited conversation and send a compact, resolved task contract with exact file or artifact paths. Shared workspace files are the context plane; worker prompts are the control plane. Pass a small recent-turn window only when uncaptured conversational nuance is necessary. Pass full history only when the task genuinely depends on the conversation itself. Workers do not receive later parent discoveries automatically; send material updates explicitly.
 

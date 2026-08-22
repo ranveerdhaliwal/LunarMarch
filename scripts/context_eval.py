@@ -169,6 +169,66 @@ def snapshot(root: Path) -> dict[str, str]:
     return result
 
 
+def _trial_content_snapshot(trial_root: Path) -> dict[str, str]:
+    files = snapshot(trial_root)
+    files.pop("integrity.json", None)
+    return files
+
+
+def seal_trial(output: Path, trial_id: str, manifest: dict[str, Any]) -> None:
+    trial_root = output / "trials" / trial_id
+    integrity_path = trial_root / "integrity.json"
+    integrity = {
+        "format": "lunarmarch-context-trial-integrity-v1",
+        "trial_id": trial_id,
+        "files": _trial_content_snapshot(trial_root),
+    }
+    write_json(integrity_path, integrity)
+    completed = manifest.setdefault("completed_trials", {})
+    if not isinstance(completed, dict):
+        raise EvalError("manifest completed_trials must be an object")
+    completed[trial_id] = _sha256(integrity_path)
+    write_json(output / "manifest.json", manifest)
+
+
+def verify_sealed_trials(output: Path, manifest: dict[str, Any]) -> None:
+    if manifest.get("format") != "lunarmarch-context-run-v2":
+        return
+    completed = manifest.get("completed_trials")
+    if not isinstance(completed, dict) or any(
+        not isinstance(key, str) or not isinstance(value, str) for key, value in completed.items()
+    ):
+        raise EvalError("manifest completed_trials must map trial IDs to integrity hashes")
+    expected = {str(item["trial_id"]) for item in manifest.get("trials", [])}
+    unexpected = sorted(set(completed) - expected)
+    if unexpected:
+        raise EvalError(f"manifest seals unexpected trials: {', '.join(unexpected)}")
+    result_ids = (
+        {path.parent.name for path in (output / "trials").glob("*/result.json")}
+        if (output / "trials").is_dir()
+        else set()
+    )
+    unsealed = sorted(result_ids - set(completed))
+    missing_results = sorted(set(completed) - result_ids)
+    if unsealed:
+        raise EvalError(f"completed trial results are not sealed: {', '.join(unsealed)}")
+    if missing_results:
+        raise EvalError(f"sealed trial results are missing: {', '.join(missing_results)}")
+    for trial_id, expected_hash in sorted(completed.items()):
+        trial_root = output / "trials" / trial_id
+        integrity_path = trial_root / "integrity.json"
+        if not integrity_path.is_file() or _sha256(integrity_path) != expected_hash:
+            raise EvalError(f"completed trial integrity record changed: {trial_id}")
+        integrity = read_object(integrity_path)
+        if (
+            integrity.get("format") != "lunarmarch-context-trial-integrity-v1"
+            or integrity.get("trial_id") != trial_id
+        ):
+            raise EvalError(f"invalid completed trial integrity record: {trial_id}")
+        if integrity.get("files") != _trial_content_snapshot(trial_root):
+            raise EvalError(f"completed trial artifacts changed: {trial_id}")
+
+
 def changed_paths(before: dict[str, str], after: dict[str, str]) -> list[str]:
     keys = set(before) | set(after)
     return sorted(path for path in keys if before.get(path) != after.get(path))
@@ -374,6 +434,7 @@ def runtime_metadata(codex_bin: str, suite_path: Path, model: str, effort: str, 
         "platform": platform.platform(),
         "suite": str(suite_path),
         "suite_sha256": _sha256(suite_path),
+        "evaluator_sha256": _sha256(Path(__file__).resolve()),
         "repository_commit": commit.stdout.strip() if commit.returncode == 0 else None,
         "repository_dirty": bool(dirty.stdout.strip()) if dirty.returncode == 0 else None,
         "seed": seed,
@@ -712,6 +773,15 @@ def render_report(summary: dict[str, Any]) -> str:
             "",
         ]
     )
+    checkpoint = summary.get("checkpoint")
+    if isinstance(checkpoint, dict):
+        lines.extend(
+            [
+                f"Checkpoint: {checkpoint.get('new_trials')} new trial(s), "
+                f"{checkpoint.get('remaining_trials')} remaining.",
+                "",
+            ]
+        )
     return "\n".join(lines)
 
 
@@ -732,6 +802,8 @@ def build_parser() -> argparse.ArgumentParser:
             command.add_argument("--timeout", type=int, default=1800)
             command.add_argument("--quality-tolerance", type=float, default=2.0)
             command.add_argument("--allow-dirty-suite", action="store_true")
+            command.add_argument("--max-new-trials", type=int, help="run at most this many pending trials")
+            command.add_argument("--resume", action="store_true", help="continue an existing immutable run root")
     summary = commands.add_parser("summarize")
     summary.add_argument("--run-root", required=True, type=Path)
     return parser
@@ -743,11 +815,14 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "summarize":
             run_root = args.run_root.expanduser().resolve()
             manifest = read_object(run_root / "manifest.json")
+            if manifest.get("format") not in {"lunarmarch-context-run-v1", "lunarmarch-context-run-v2"}:
+                raise EvalError("unsupported run manifest format")
+            verify_sealed_trials(run_root, manifest)
             result_paths = sorted((run_root / "trials").glob("*/result.json"))
             results = [read_object(path) for path in result_paths]
             for result_path, result in zip(result_paths, results, strict=True):
                 events_path = result_path.parent / "events.jsonl"
-                if events_path.is_file():
+                if manifest.get("format") == "lunarmarch-context-run-v1" and events_path.is_file():
                     events_text = events_path.read_text(encoding="utf-8")
                     result["usage"] = extract_usage_jsonl(events_text)
                     result["events"] = extract_event_metrics(events_text)
@@ -779,30 +854,83 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps({"trials": trials, "context_sizes": context_sizes}, indent=2, sort_keys=True))
             return 0
         output = args.output.expanduser().resolve()
-        if output.exists() and any(output.iterdir()):
-            raise EvalError(f"output directory is not empty: {output}")
-        output.mkdir(parents=True, exist_ok=True)
+        if args.max_new_trials is not None and args.max_new_trials < 1:
+            raise EvalError("max-new-trials must be positive")
         selected_conditions = [item for item in suite["conditions"] if not args.conditions or item in args.conditions]
-        metadata = runtime_metadata(args.codex_bin, suite_path, args.model, args.effort, args.seed)
-        if metadata["repository_dirty"] and not args.allow_dirty_suite:
-            raise EvalError("suite repository has uncommitted changes; commit them or pass --allow-dirty-suite for a non-publishable run")
         content_manifest = suite_content_manifest(suite_path, suite)
-        metadata["suite_content_manifest"] = content_manifest
-        metadata["suite_content_fingerprint"] = manifest_fingerprint(content_manifest)
-        metadata["dirty_suite_override"] = bool(args.allow_dirty_suite)
-        manifest = {
-            "format": "lunarmarch-context-run-v1",
-            "conditions": selected_conditions,
-            "trials": trials,
-            "runtime": metadata,
-            "quality_tolerance": args.quality_tolerance,
-        }
-        write_json(output / "manifest.json", manifest)
+        content_fingerprint = manifest_fingerprint(content_manifest)
+        if args.resume:
+            if not output.is_dir():
+                raise EvalError(f"resume output directory does not exist: {output}")
+            manifest = read_object(output / "manifest.json")
+            if manifest.get("format") != "lunarmarch-context-run-v2":
+                raise EvalError("unsupported resume manifest format")
+            expected_manifest = {
+                "conditions": selected_conditions,
+                "trials": trials,
+                "repetitions": args.repetitions,
+                "quality_tolerance": args.quality_tolerance,
+            }
+            for field, expected_value in expected_manifest.items():
+                if manifest.get(field) != expected_value:
+                    raise EvalError(f"resume argument does not match manifest: {field}")
+            runtime = manifest.get("runtime", {})
+            if runtime.get("requested_model") != args.model or runtime.get("requested_effort") != args.effort:
+                raise EvalError("resume model or effort does not match manifest")
+            if runtime.get("suite_content_fingerprint") != content_fingerprint:
+                raise EvalError("suite content changed since the run was created")
+            if runtime.get("evaluator_sha256") != _sha256(Path(__file__).resolve()):
+                raise EvalError("evaluator changed since the run was created")
+            version = subprocess.run([args.codex_bin, "--version"], text=True, capture_output=True, check=False)
+            current_version = (version.stdout or version.stderr).strip()
+            if current_version != runtime.get("codex_version"):
+                raise EvalError("worker CLI version changed since the run was created")
+            verify_sealed_trials(output, manifest)
+        else:
+            if output.exists() and any(output.iterdir()):
+                raise EvalError(f"output directory is not empty: {output}")
+            output.mkdir(parents=True, exist_ok=True)
+            metadata = runtime_metadata(args.codex_bin, suite_path, args.model, args.effort, args.seed)
+            if metadata["repository_dirty"] and not args.allow_dirty_suite:
+                raise EvalError(
+                    "suite repository has uncommitted changes; commit them or pass --allow-dirty-suite for a non-publishable run"
+                )
+            metadata["suite_content_manifest"] = content_manifest
+            metadata["suite_content_fingerprint"] = content_fingerprint
+            metadata["dirty_suite_override"] = bool(args.allow_dirty_suite)
+            manifest = {
+                "format": "lunarmarch-context-run-v2",
+                "conditions": selected_conditions,
+                "trials": trials,
+                "repetitions": args.repetitions,
+                "runtime": metadata,
+                "quality_tolerance": args.quality_tolerance,
+                "completed_trials": {},
+            }
+            write_json(output / "manifest.json", manifest)
         cases = {case["id"]: case for case in suite["cases"]}
-        results = []
-        for trial in trials:
+        result_paths = sorted((output / "trials").glob("*/result.json")) if (output / "trials").is_dir() else []
+        existing_results = [read_object(path) for path in result_paths]
+        existing_by_id = {str(item.get("trial_id")): item for item in existing_results}
+        if len(existing_by_id) != len(existing_results):
+            raise EvalError("resume root contains duplicate trial results")
+        expected_ids = {item["trial_id"] for item in trials}
+        unexpected = sorted(set(existing_by_id) - expected_ids)
+        if unexpected:
+            raise EvalError(f"resume root contains unexpected trials: {', '.join(unexpected)}")
+        incomplete_dirs = [
+            path.name
+            for path in (output / "trials").glob("*")
+            if path.is_dir() and not (path / "result.json").is_file()
+        ] if (output / "trials").is_dir() else []
+        if incomplete_dirs:
+            raise EvalError(f"resume root contains incomplete trial directories: {', '.join(sorted(incomplete_dirs))}")
+        pending = [item for item in trials if item["trial_id"] not in existing_by_id]
+        if args.max_new_trials is not None:
+            pending = pending[: args.max_new_trials]
+        for trial in pending:
             print(f"[{trial['sequence']}/{len(trials)}] {trial['trial_id']}", flush=True)
-            results.append(
+            existing_by_id[trial["trial_id"]] = (
                 run_trial(
                     suite_path,
                     suite,
@@ -815,12 +943,19 @@ def main(argv: list[str] | None = None) -> int:
                     args.timeout,
                 )
             )
+            seal_trial(output, trial["trial_id"], manifest)
+        results = [existing_by_id[item["trial_id"]] for item in trials if item["trial_id"] in existing_by_id]
         summary_value = summarize(
             results,
             selected_conditions,
             args.quality_tolerance,
             [item["trial_id"] for item in trials],
         )
+        summary_value["checkpoint"] = {
+            "new_trials": len(pending),
+            "remaining_trials": len(trials) - len(results),
+            "resume_command_required": len(results) < len(trials),
+        }
         write_json(output / "summary.json", summary_value)
         (output / "report.md").write_text(render_report(summary_value), encoding="utf-8")
         print(json.dumps(summary_value, indent=2, sort_keys=True))

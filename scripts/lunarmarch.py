@@ -21,6 +21,7 @@ from lm_core import (
     reserve_attempt,
     status_summary,
 )
+from worker_transports import default_model_for_transport
 
 
 def emit(value: object) -> None:
@@ -28,7 +29,7 @@ def emit(value: object) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="LunarMarch durable Luna-first orchestration")
+    parser = argparse.ArgumentParser(description="LunarMarch durable provider-aware orchestration")
     commands = parser.add_subparsers(dest="command", required=True)
 
     init = commands.add_parser("init", help="initialize a durable run")
@@ -45,8 +46,10 @@ def build_parser() -> argparse.ArgumentParser:
     reserve.add_argument("--run-root", required=True, type=Path)
     reserve.add_argument("--task-id", required=True)
     reserve.add_argument("--role", required=True)
-    reserve.add_argument("--model", default="gpt-5.6-luna")
+    reserve.add_argument("--model", help="model ID; defaults by transport")
     reserve.add_argument("--effort")
+    reserve.add_argument("--transport", choices=["codex", "opencode"], default="codex")
+    reserve.add_argument("--variant")
 
     finish = commands.add_parser("finish", help="capture a terminal event for a manually executed attempt")
     finish.add_argument("--run-root", required=True, type=Path)
@@ -58,15 +61,19 @@ def build_parser() -> argparse.ArgumentParser:
     gate.add_argument("--run-root", required=True, type=Path)
     gate.add_argument("--attempt", required=True, type=Path)
 
-    launch = commands.add_parser("launch", help="reserve and run an external Codex worker")
+    launch = commands.add_parser("launch", help="reserve and run an external worker")
     launch.add_argument("--run-root", required=True, type=Path)
     launch.add_argument("--task-id", required=True)
     launch.add_argument("--role", required=True)
-    launch.add_argument("--model", default="gpt-5.6-luna")
+    launch.add_argument("--model", help="model ID; defaults by transport")
     launch.add_argument("--effort")
-    launch.add_argument("--codex-bin", default="codex")
+    launch.add_argument("--transport", choices=["codex", "opencode"], default="codex")
+    launch.add_argument("--variant", help="provider-specific OpenCode model variant")
+    launch.add_argument("--worker-bin", help="worker CLI executable; defaults to the selected transport")
+    launch.add_argument("--codex-bin", help=argparse.SUPPRESS)
     launch.add_argument("--run-checks", action="store_true")
     launch.add_argument("--check-timeout", type=int, default=1200)
+    launch.add_argument("--worker-timeout", type=int, default=1800)
 
     accept = commands.add_parser("accept", help="record the parent's semantic acceptance")
     accept.add_argument("--run-root", required=True, type=Path)
@@ -95,7 +102,16 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "add-task":
             emit(add_task(args.run_root, args.spec))
         elif args.command == "reserve":
-            attempt = reserve_attempt(args.run_root, args.task_id, args.role, args.model, args.effort)
+            model = args.model or default_model_for_transport(args.transport)
+            attempt = reserve_attempt(
+                args.run_root,
+                args.task_id,
+                args.role,
+                model,
+                args.effort,
+                args.transport,
+                args.variant,
+            )
             emit({"status": "reserved", "attempt": str(attempt)})
         elif args.command == "finish":
             checks = None
@@ -109,15 +125,22 @@ def main(argv: list[str] | None = None) -> int:
             emit(gate)
             return 0 if gate["clear"] else 1
         elif args.command == "launch":
+            if args.worker_bin and args.codex_bin:
+                raise LunarMarchError("use only one of --worker-bin or legacy --codex-bin")
+            worker_bin = args.worker_bin or args.codex_bin or args.transport
+            model = args.model or default_model_for_transport(args.transport)
             attempt, terminal = launch_worker(
                 args.run_root,
                 args.task_id,
                 args.role,
-                args.model,
+                model,
                 args.effort,
-                args.codex_bin,
+                worker_bin,
                 args.run_checks,
                 args.check_timeout,
+                args.transport,
+                args.variant,
+                args.worker_timeout,
             )
             emit({"status": "terminal", "attempt": str(attempt), "terminal": terminal})
         elif args.command == "accept":

@@ -11,12 +11,15 @@ import hashlib
 import json
 import os
 import re
+import signal
 import shutil
 import subprocess
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
+
+from worker_transports import SUPPORTED_TRANSPORTS, build_worker_invocation
 
 
 SCHEMA_VERSION = 1
@@ -353,7 +356,7 @@ def compare_snapshots(baseline: dict[str, Any], current: dict[str, Any]) -> dict
     }
 
 
-def render_prompt(role: str, contract: dict[str, Any], report_path: Path) -> str:
+def render_prompt(role: str, contract: dict[str, Any]) -> str:
     return f"""# LunarMarch worker packet
 
 Role: {role}
@@ -366,9 +369,7 @@ Universal boundaries:
 - Preserve unrelated existing changes.
 - Never weaken checks or invent evidence.
 - Do not perform destructive, external, paid, deploy, release, commit, or push operations unless the contract and parent separately authorize them.
-- Write the final report to the exact path below through the Codex final response mechanism.
-
-Report path: {report_path}
+- Return the final report in your final response. The launcher captures it outside the project; do not create a project report file.
 
 Task contract:
 ```json
@@ -388,6 +389,8 @@ def reservation_errors(
     errors: list[str] = []
     if reservation.get("format") != "lunarmarch-reservation-v1":
         errors.append("unsupported reservation format")
+    if reservation.get("transport", "codex") not in SUPPORTED_TRANSPORTS:
+        errors.append("reservation has unsupported worker transport")
     task_id = reservation.get("task_id")
     role = reservation.get("role")
     if not isinstance(task_id, str) or task_id not in state.get("tasks", {}):
@@ -437,12 +440,16 @@ def reserve_attempt(
     role: str,
     model: str = "gpt-5.6-luna",
     effort: str | None = None,
+    transport: str = "codex",
+    variant: str | None = None,
 ) -> Path:
     run_root = resolve_existing_directory(run_root)
     state = load_state(run_root)
     task, contract_path, contract = contract_for_task(run_root, state, task_id)
     if role not in ROLES:
         raise LunarMarchError(f"unknown role: {role}")
+    if transport not in SUPPORTED_TRANSPORTS:
+        raise LunarMarchError(f"unsupported worker transport: {transport}")
     for dependency in contract["depends_on"]:
         if state["tasks"][dependency]["status"] != "accepted":
             raise LunarMarchError(f"dependency is not accepted: {dependency}")
@@ -453,9 +460,9 @@ def reserve_attempt(
             active.append(candidate.name)
     if active:
         raise LunarMarchError(f"task has running_or_unknown attempt(s): {', '.join(active)}")
-    if effort is None:
+    if effort is None and transport == "codex":
         effort = "medium" if role in {"scout", "sentinel", "clerk", "recovery"} else "high"
-    if effort not in {"low", "medium", "high", "xhigh", "max"}:
+    if effort is not None and effort not in {"low", "medium", "high", "xhigh", "max"}:
         raise LunarMarchError(f"unsupported reasoning effort: {effort}")
     attempt_number = _next_attempt_number(run_root, task_id, role)
     attempt_dir = run_root / "attempts" / task_id / f"{role}-{attempt_number}"
@@ -465,14 +472,16 @@ def reserve_attempt(
     report_path = attempt_dir / "report.md"
     project_root = resolve_existing_directory(state["project_root"])
     atomic_write_json(baseline_path, capture_snapshot(project_root, run_root))
-    atomic_write_bytes(prompt_path, render_prompt(role, contract, report_path).encode("utf-8"))
+    atomic_write_bytes(prompt_path, render_prompt(role, contract).encode("utf-8"))
     sandbox = "workspace-write" if role in WRITE_ROLES else "read-only"
     reservation = {
         "format": "lunarmarch-reservation-v1",
         "task_id": task_id,
         "role": role,
+        "transport": transport,
         "model": model,
         "effort": effort,
+        "variant": variant,
         "sandbox": sandbox,
         "created_at": utc_now(),
         "contract": str(contract_path),
@@ -697,44 +706,65 @@ def launch_worker(
     role: str,
     model: str,
     effort: str | None,
-    codex_bin: str,
+    worker_bin: str,
     run_acceptance: bool,
     check_timeout: int,
+    transport: str = "codex",
+    variant: str | None = None,
+    worker_timeout: int = 1800,
 ) -> tuple[Path, dict[str, Any]]:
-    executable = shutil.which(codex_bin) if not Path(codex_bin).is_absolute() else codex_bin
+    executable = shutil.which(worker_bin) if not Path(worker_bin).is_absolute() else worker_bin
     if not executable or not Path(executable).is_file():
-        raise LunarMarchError(f"Codex executable not found: {codex_bin}")
-    attempt_dir = reserve_attempt(run_root, task_id, role, model, effort)
+        raise LunarMarchError(f"{transport} executable not found: {worker_bin}")
+    attempt_dir = reserve_attempt(run_root, task_id, role, model, effort, transport, variant)
     reservation = read_json(attempt_dir / "reservation.json")
     state = load_state(Path(run_root).resolve())
     project_root = resolve_existing_directory(state["project_root"])
-    command = [
-        str(executable),
-        "exec",
-        "--ephemeral",
-        "-C",
-        str(project_root),
-        "-m",
-        reservation["model"],
-        "-c",
-        f'model_reasoning_effort="{reservation["effort"]}"',
-        "-c",
-        "agents.max_depth=0",
-        "--output-last-message",
-        reservation["report"],
-        "-",
-    ]
-    if reservation["sandbox"] == "workspace-write":
-        # Current Codex treats --approve-for-me as the workspace-write policy;
-        # passing it together with --sandbox is a CLI conflict.
-        command.insert(-1, "--approve-for-me")
-    else:
-        command[-1:-1] = ["-s", reservation["sandbox"]]
     prompt = Path(reservation["prompt"]).read_text(encoding="utf-8")
-    result = subprocess.run(command, input=prompt, text=True, capture_output=True, check=False)
+    try:
+        invocation = build_worker_invocation(
+            transport,
+            str(executable),
+            project_root,
+            reservation["model"],
+            reservation["effort"],
+            reservation.get("variant"),
+            reservation["sandbox"],
+            Path(reservation["report"]),
+            Path(reservation["prompt"]),
+            prompt,
+        )
+    except ValueError as exc:
+        raise LunarMarchError(str(exc)) from exc
+    process = subprocess.Popen(
+        invocation.command,
+        text=True,
+        stdin=subprocess.PIPE if invocation.stdin is not None else subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        env=invocation.env,
+        start_new_session=os.name == "posix",
+    )
+    try:
+        stdout, stderr = process.communicate(input=invocation.stdin, timeout=worker_timeout)
+        returncode = process.returncode
+    except subprocess.TimeoutExpired:
+        if os.name == "posix":
+            os.killpg(process.pid, signal.SIGKILL)
+        else:
+            process.kill()
+        stdout, stderr = process.communicate()
+        returncode = 124
+        stderr = (stderr + "\nworker timed out").strip()
+    result = subprocess.CompletedProcess(invocation.command, returncode, stdout, stderr)
+    if invocation.capture_stdout_as_report and result.stdout.strip():
+        atomic_write_bytes(Path(reservation["report"]), result.stdout.encode("utf-8", "replace"))
     atomic_write_bytes(
         attempt_dir / "worker.log",
-        (f"command={json.dumps(command)}\nexit_code={result.returncode}\n\nSTDOUT\n{result.stdout}\n\nSTDERR\n{result.stderr}\n").encode("utf-8", "replace"),
+        (
+            f"command={json.dumps(invocation.logged_command)}\ntransport={transport}\n"
+            f"exit_code={result.returncode}\n\nSTDOUT\n{result.stdout}\n\nSTDERR\n{result.stderr}\n"
+        ).encode("utf-8", "replace"),
     )
     _, _, contract = contract_for_task(Path(run_root).resolve(), load_state(Path(run_root).resolve()), task_id)
     checks: list[dict[str, Any]] = []

@@ -296,6 +296,99 @@ print(json.dumps({'type': 'turn.completed', 'usage': {'input_tokens': 100, 'inpu
             copied = root / "out" / "trials" / trial["trial_id"] / "project"
             self.assertFalse(copied.joinpath(".git", "secret").exists())
 
+    def test_checkpointed_run_resumes_same_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fake = root / "fake-codex"
+            fake.write_text(
+                """#!/usr/bin/env python3
+import json
+import pathlib
+import sys
+if '--version' in sys.argv:
+    print('fake-codex checkpoint-1')
+    raise SystemExit(0)
+args = sys.argv[1:]
+project = pathlib.Path(args[args.index('-C') + 1])
+report = pathlib.Path(args[args.index('--output-last-message') + 1])
+project.joinpath('handles.py').write_text('''import re
+import unicodedata
+def canonical_handle(value):
+    if not isinstance(value, str): raise TypeError("value must be a string")
+    value = unicodedata.normalize("NFKC", value.strip())
+    if value.startswith("@"): value = value[1:]
+    value = value.casefold()
+    if not 3 <= len(value) <= 20 or re.fullmatch(r"[a-z0-9_]+", value) is None: raise ValueError("invalid handle")
+    return "@" + value
+''', encoding='utf-8')
+report.write_text('done\\n', encoding='utf-8')
+sys.stdin.read()
+print(json.dumps({'type':'turn.completed','usage':{'input_tokens':100,'output_tokens':20,'total_tokens':120}}))
+""",
+                encoding="utf-8",
+            )
+            fake.chmod(0o755)
+            output = root / "checkpoint-run"
+            base = [
+                "run",
+                "--suite",
+                str(SUITE),
+                "--output",
+                str(output),
+                "--conditions",
+                "contract",
+                "contract-padded",
+                "--repetitions",
+                "2",
+                "--codex-bin",
+                str(fake),
+                "--allow-dirty-suite",
+                "--max-new-trials",
+                "2",
+            ]
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(main(base), 0)
+            partial = json.loads((output / "summary.json").read_text(encoding="utf-8"))
+            self.assertFalse(partial["run_integrity"]["complete"])
+            self.assertFalse(partial["decision"]["eligible"])
+            self.assertEqual(partial["checkpoint"]["remaining_trials"], 2)
+
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(main(base + ["--resume"]), 0)
+            complete = json.loads((output / "summary.json").read_text(encoding="utf-8"))
+            self.assertTrue(complete["run_integrity"]["complete"])
+            self.assertEqual(complete["checkpoint"]["remaining_trials"], 0)
+            self.assertEqual(complete["total_trials"], 4)
+
+    def test_checkpoint_resume_rejects_tampered_completed_trial(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fake = root / "fake-codex"
+            fake.write_text(
+                "#!/usr/bin/env python3\nimport json, pathlib, sys\n"
+                "if '--version' in sys.argv:\n print('fake-codex seal-1'); raise SystemExit(0)\n"
+                "args=sys.argv[1:]\nproject=pathlib.Path(args[args.index('-C')+1])\n"
+                "report=pathlib.Path(args[args.index('--output-last-message')+1])\n"
+                "report.write_text('done\\n')\nsys.stdin.read()\n"
+                "print(json.dumps({'type':'turn.completed','usage':{'input_tokens':1,'output_tokens':1,'total_tokens':2}}))\n",
+                encoding="utf-8",
+            )
+            fake.chmod(0o755)
+            output = root / "sealed-run"
+            base = [
+                "run", "--suite", str(SUITE), "--output", str(output),
+                "--conditions", "contract", "contract-padded", "--repetitions", "2",
+                "--codex-bin", str(fake), "--allow-dirty-suite", "--max-new-trials", "1",
+            ]
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(main(base), 0)
+            result_path = next((output / "trials").glob("*/result.json"))
+            result = json.loads(result_path.read_text(encoding="utf-8"))
+            result["quality_score"] = 100.0
+            result_path.write_text(json.dumps(result), encoding="utf-8")
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(main(base + ["--resume"]), 2)
+
 
 if __name__ == "__main__":
     unittest.main()

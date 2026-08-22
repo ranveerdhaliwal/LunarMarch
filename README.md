@@ -1,6 +1,6 @@
 # LunarMarch
 
-LunarMarch is a Luna-first orchestration skill for research, focused coding tasks, independent review, and resumable multi-phase projects.
+LunarMarch is a Luna-first, provider-aware orchestration skill for research, focused coding tasks, independent review, and resumable multi-phase projects.
 
 ```text
 parent authority
@@ -12,11 +12,11 @@ parent authority
                   objective integrity gate
 ```
 
-GPT-5.6 Luna performs the high-volume work. The parent model keeps decomposition, ambiguity resolution, risk decisions, and final acceptance. Deterministic helpers bind contracts and prove lifecycle, hashes, source movement, declared write scope, and acceptance-command results.
+GPT-5.6 Luna remains the in-house default. The same durable core can now launch DeepSeek and other provider models through OpenCode. The parent model keeps decomposition, ambiguity resolution, risk decisions, and final acceptance; deterministic helpers bind contracts and prove lifecycle, hashes, source movement, declared write scope, and acceptance-command results regardless of transport.
 
 ## Why another orchestrator?
 
-Existing projects each solve a valuable portion of the problem. LunarMarch combines their strongest general ideas into a small Codex-native system:
+Existing projects each solve a valuable portion of the problem. LunarMarch combines their strongest general ideas into a small transport-neutral core with first-class Codex integration:
 
 - immutable attempts and objective gates for trustworthy long runs;
 - risk-aware Luna routing and independent reviews;
@@ -28,7 +28,7 @@ See [references/influences.md](references/influences.md) for the projects studie
 
 ## Current status
 
-Version `0.1.0` includes the skill, contract schema, Luna `codex exec` transport, durable run state, scope snapshots, integrity gates, recovery-safe status, examples, and offline tests. The first model-backed Task evaluation completed successfully on 2026-08-22; see [references/live-test-results-2026-08-22.md](references/live-test-results-2026-08-22.md). The complete verification record—including all 28 automated tests, live trials, invalidated diagnostics, evaluator hardening, limitations, and reproduction commands—is in [references/testing-and-evaluation.md](references/testing-and-evaluation.md).
+Version `0.2.0` includes the skill, contract schema, Codex and OpenCode worker transports, durable run state, scope snapshots, integrity gates, checkpointed evaluations, recovery-safe status, examples, and offline tests. The first model-backed Task evaluation completed successfully on 2026-08-22; see [references/live-test-results-2026-08-22.md](references/live-test-results-2026-08-22.md). The complete verification record—including all 35 automated tests, live trials, invalidated diagnostics, evaluator hardening, limitations, and reproduction commands—is in [references/testing-and-evaluation.md](references/testing-and-evaluation.md).
 
 ## Quick start
 
@@ -50,7 +50,23 @@ python3 scripts/lunarmarch.py launch \
   --run-checks
 ```
 
-The launcher requires an installed, authenticated Codex CLI with access to `gpt-5.6-luna`. Run `python3 -m unittest discover -s tests -v` for offline verification. CI repeats compilation, the command-interface smoke check, and the full offline suite on Python 3.11–3.13.
+The default path requires an installed, authenticated Codex CLI with access to `gpt-5.6-luna`. Run `python3 -m unittest discover -s tests -v` for offline verification. CI repeats compilation, the command-interface smoke check, and the full offline suite on Python 3.11–3.13.
+
+To use DeepSeek through OpenCode instead:
+
+```bash
+python3 scripts/lunarmarch.py launch \
+  --run-root /absolute/project-run \
+  --task-id users-pagination \
+  --role builder \
+  --transport opencode \
+  --model deepseek/deepseek-v4-flash \
+  --run-checks
+```
+
+OpenCode stores the DeepSeek credential; LunarMarch never reads or records the API key. See [references/providers.md](references/providers.md) for setup, the Sol-orchestrator/DeepSeek-worker design, permission differences, and how to add another transport.
+
+The OpenCode adapter is covered by fake-CLI integration and permission-policy tests. No paid DeepSeek call was made in this repository yet; the first authenticated smoke test remains pending until a key and OpenCode installation are available.
 
 The model-backed procedure is documented in [references/live-test.md](references/live-test.md). It uses a disposable intentionally-failing fixture, a Luna Builder, a fresh Luna Reviewer, objective gates, and explicit parent acceptance.
 
@@ -70,8 +86,8 @@ Native workers default to no inherited conversation plus a compact resolved cont
 
 ### Verification performed
 
-- 18 orchestration tests cover immutable contracts, attempt lifecycle, write boundaries, acceptance evidence, independent review, phase freezing, launcher permissions, recovery safety, and installation behavior.
-- 10 evaluator tests cover opaque trial identities, balanced ordering, packet equivalence, terminal usage parsing, malformed grader handling, missing-trial and missing-telemetry rejection, end-to-end scoring, and source-repository isolation.
+- 23 orchestration and transport tests cover immutable contracts, attempt lifecycle, write boundaries, acceptance evidence, independent review, phase freezing, Codex/OpenCode launch policies, environment isolation, bounded timeouts, recovery safety, and installation behavior.
+- 12 evaluator tests cover opaque trial identities, balanced ordering, packet equivalence, terminal usage parsing, malformed grader handling, missing-trial and missing-telemetry rejection, sealed checkpoint/resume, tamper rejection, end-to-end scoring, and source-repository isolation.
 - One live Task evaluation exercised Builder, Reviewer, objective gates, retry recording, and parent acceptance.
 - One blinded context evaluation ran 12 Luna workers in six matched pairs from a clean commit.
 - An independent Luna audit found eight evaluator defects and one order-balance defect; all were corrected and covered by regression tests before the published run.
@@ -80,11 +96,11 @@ For the exact test inventory and what each check proves, read [references/testin
 
 ### Expanding to 3–5 additional fixtures
 
-A credible next set should cover research synthesis, multi-file implementation, diagnosis from incomplete evidence, resumable multi-phase work, and reviewer/fixer recovery. Estimated elapsed effort is approximately **5–7 hours for three additional fixtures** or **8–12 hours for five**, including fixture design, hidden graders, leakage review, dry runs, 12 live Luna trials per fixture, analysis, and documentation. The live model portion alone is roughly 10–15 minutes per fixture when run sequentially; careful grader design is the larger cost. These are planning estimates, not guarantees.
+A credible next set should cover research synthesis, multi-file implementation, diagnosis from incomplete evidence, resumable multi-phase work, and reviewer/fixer recovery. It no longer needs to happen in one expensive session: create the full immutable manifest once, run one or two trials with `--max-new-trials`, then continue later with `--resume`. A useful cadence is one fixture design session followed by six two-trial checkpoints. Partial checkpoints are preserved but cannot support a quality claim until the balanced roster is complete. See [references/testing-and-evaluation.md](references/testing-and-evaluation.md#bite-sized-execution-plan).
 
 ## Installation as a skill
 
-For every local Codex chat:
+For every local Codex or OpenCode chat:
 
 ```bash
 python3 scripts/install_skill.py --scope user
@@ -101,6 +117,10 @@ See [references/installation.md](references/installation.md) for discovery behav
 ## Safety model
 
 LunarMarch does not grant authority. Read-only roles use a read-only sandbox; write roles require declared owned paths; destructive and external actions remain subject to the parent and user’s normal authorization boundary. Mechanical PASS never means the engineering is accepted.
+
+## Contributing
+
+Contributions are welcome, especially small deterministic fixtures, transport adapters, permission hardening, and independent reproductions. Contributors do not need to fund a full live benchmark: fixture design, hidden graders, fake-CLI tests, and leakage audits are useful standalone pull requests. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
