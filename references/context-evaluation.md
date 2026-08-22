@@ -14,7 +14,7 @@ The default LunarMarch policy is a compact resolved contract with no inherited c
 - `contract-padded`: the identical resolved contract plus neutral irrelevant history. Paired with `contract`, this is the cleanest bundled test of additional context volume/noise while holding required facts fixed.
 - `full`: the same material facts embedded in raw, noisy, partly superseded history.
 
-Do not label the condition inside the model-visible prompt. Hold task, fixture, model, effort, tools, sandbox, checks, and output request constant. Counterbalance condition position within each case and use at least five repetitions per case and condition. Treat five repetitions and the bundled single fixture as an exploratory case study. For a publishable claim, predeclare a practically important effect, use several heterogeneous cases, justify sample size, report confidence intervals, and rerun on another day or model snapshot.
+Do not label the condition inside the model-visible prompt. Hold task, fixture, model, effort, tools, sandbox, checks, and output request constant. Counterbalance condition position within each case. Use at least five repetitions per case and condition, rounded up so the repetition count is divisible by the number of selected conditions; for a two-condition comparison, use at least six. Treat the bundled single fixture as an exploratory case study. For a publishable claim, predeclare a practically important effect, use several heterogeneous cases, justify sample size, report confidence intervals, and rerun on another day or model snapshot.
 
 ## Measurements
 
@@ -42,7 +42,7 @@ Plan without spending model usage:
 ```bash
 python3 <skill>/scripts/context_eval.py plan \
   --suite <skill>/evals/context-efficiency/suite.json \
-  --repetitions 5 --seed 20260822
+  --repetitions 10 --seed 20260822
 ```
 
 Run live trials in a disposable output directory:
@@ -51,7 +51,7 @@ Run live trials in a disposable output directory:
 python3 <skill>/scripts/context_eval.py run \
   --suite <skill>/evals/context-efficiency/suite.json \
   --output /tmp/lunarmarch-context-eval \
-  --repetitions 5 --seed 20260822 \
+  --repetitions 10 --seed 20260822 \
   --model gpt-5.6-luna --effort high
 ```
 

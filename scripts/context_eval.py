@@ -117,6 +117,11 @@ def plan_trials(suite: dict[str, Any], repetitions: int, seed: int, selected: It
         if unknown:
             raise EvalError(f"unknown conditions: {', '.join(unknown)}")
         conditions = [item for item in conditions if item in requested]
+    if repetitions % len(conditions) != 0:
+        raise EvalError(
+            f"repetitions ({repetitions}) must be divisible by selected conditions ({len(conditions)}) "
+            "to balance trial positions"
+        )
     rng = random.Random(seed)
     base = conditions[:]
     rng.shuffle(base)

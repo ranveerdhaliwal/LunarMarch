@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from context_eval import (  # noqa: E402
+    EvalError,
     extract_event_metrics,
     extract_usage_jsonl,
     load_context,
@@ -47,6 +48,15 @@ class ContextEvalTests(unittest.TestCase):
         padded = load_context(suite_path.parent, case["contexts"]["contract-padded"])
         self.assertTrue(padded.startswith(contract.strip()))
         self.assertGreater(len(padded), len(contract) * 10)
+
+    def test_plan_rejects_position_imbalanced_repetitions(self) -> None:
+        _, suite = validate_suite(SUITE)
+        with self.assertRaisesRegex(EvalError, "divisible"):
+            plan_trials(suite, repetitions=5, seed=7, selected=["contract", "contract-padded"])
+        trials = plan_trials(suite, repetitions=6, seed=7, selected=["contract", "contract-padded"])
+        for condition in ("contract", "contract-padded"):
+            positions = [item["position"] for item in trials if item["condition"] == condition]
+            self.assertEqual(positions.count(1), positions.count(2))
 
     def test_usage_parser_uses_only_terminal_completed_record(self) -> None:
         events = "\n".join(
