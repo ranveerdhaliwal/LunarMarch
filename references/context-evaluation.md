@@ -60,3 +60,5 @@ The runner uses `codex exec --json`, fresh project copies, randomized trial orde
 Use `--conditions contract full --repetitions 1` only as a plumbing smoke test. It is not enough evidence for a quality claim.
 
 Only publish a result produced from a clean suite commit with `dirty_suite_override` set to `false`, a complete expected-trial roster, and telemetry for every paired trial. An earlier diagnostic run exposed condition labels in filesystem paths and was intentionally invalidated rather than cited as evidence.
+
+The first clean, opaque, position-balanced six-pair case study is recorded in [../evals/context-efficiency/results/2026-08-22-contract-v-padding.md](../evals/context-efficiency/results/2026-08-22-contract-v-padding.md).

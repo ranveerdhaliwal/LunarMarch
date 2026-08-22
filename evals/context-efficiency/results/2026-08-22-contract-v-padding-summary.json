@@ -1,0 +1,67 @@
+{
+  "format": "lunarmarch-context-summary-v1",
+  "generated_at": "2026-08-22T17:11:25+00:00",
+  "total_trials": 12,
+  "run_integrity": {
+    "complete": true,
+    "expected_trials": 12,
+    "observed_trials": 12,
+    "missing_trial_ids": [],
+    "unexpected_trial_ids": [],
+    "duplicate_trial_ids": []
+  },
+  "conditions": {
+    "contract": {
+      "trials": 6,
+      "task_success_rate": 0.8333,
+      "task_success_wilson_95": [0.4365, 0.9699],
+      "infrastructure_failures": 0,
+      "quality": {"mean": 98.3333, "median": 100.0, "stdev": 4.0825},
+      "context_bytes": {"mean": 588},
+      "command_calls": {"mean": 4.5, "median": 4.0},
+      "worker_wall_seconds": {"mean": 52.1213, "median": 51.3433, "p95": 62.148, "stdev": 6.6343},
+      "usage": {
+        "input_tokens": {"mean": 117808.8333, "median": 110824.5, "observed": 6},
+        "cached_input_tokens": {"mean": 105770.6667, "median": 99072.0, "observed": 6},
+        "uncached_input_tokens": {"mean": 12038.1667, "median": 11850.0, "observed": 6},
+        "output_tokens": {"mean": 2003.1667, "median": 1980.5, "observed": 6},
+        "reasoning_tokens": {"mean": 783.5, "median": 795.5, "observed": 6},
+        "total_tokens": {"mean": 119812, "median": 112805.0, "observed": 6}
+      }
+    },
+    "contract-padded": {
+      "trials": 6,
+      "task_success_rate": 1.0,
+      "task_success_wilson_95": [0.6097, 1.0],
+      "infrastructure_failures": 0,
+      "quality": {"mean": 100.0, "median": 100.0, "stdev": 0.0},
+      "context_bytes": {"mean": 14076},
+      "command_calls": {"mean": 5.1667, "median": 5.5},
+      "worker_wall_seconds": {"mean": 54.317, "median": 57.2169, "p95": 61.127, "stdev": 7.9156},
+      "usage": {
+        "input_tokens": {"mean": 144005.5, "median": 150038.0, "observed": 6},
+        "cached_input_tokens": {"mean": 126805.3333, "median": 132096.0, "observed": 6},
+        "uncached_input_tokens": {"mean": 17200.1667, "median": 17213.0, "observed": 6},
+        "output_tokens": {"mean": 1936.5, "median": 2008.0, "observed": 6},
+        "reasoning_tokens": {"mean": 741, "median": 733.5, "observed": 6},
+        "total_tokens": {"mean": 145942, "median": 152046.0, "observed": 6}
+      }
+    }
+  },
+  "paired_vs_contract": {
+    "contract-padded": {
+      "quality_pairs": 6,
+      "token_pairs": 6,
+      "mean_quality_delta_vs_contract": 1.6667,
+      "mean_total_token_delta_vs_contract": 26130.0
+    }
+  },
+  "decision": {
+    "quality_tolerance_points": 2.0,
+    "minimum_pairs": 5,
+    "eligible": true,
+    "compact_contract_default_supported": true,
+    "rule": "contract-padded minus contract quality <= tolerance and total-token delta > 0"
+  },
+  "interpretation_boundary": "Exploratory evidence for these cases and runtime only; not a general model-quality claim."
+}

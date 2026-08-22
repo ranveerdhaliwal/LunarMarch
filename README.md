@@ -56,7 +56,7 @@ The model-backed procedure is documented in [references/live-test.md](references
 
 ## Measured context policy
 
-Native workers default to no inherited conversation plus a compact resolved contract and exact workspace paths. A bundled evaluator measures whether that saves usage without degrading task quality. It uses opaque trial identities, counterbalanced order, deterministic hidden graders, authoritative terminal usage telemetry, and completeness checks. See [the evaluation protocol](references/context-evaluation.md). A clean blinded result will be linked here after it is rerun.
+Native workers default to no inherited conversation plus a compact resolved contract and exact workspace paths. A bundled evaluator measures whether that saves usage without degrading task quality. It uses opaque trial identities, counterbalanced order, deterministic hidden graders, authoritative terminal usage telemetry, and completeness checks. In the first clean six-pair case study, compact context used 17.9% fewer cumulative tokens; all code-behavior checks passed, but one compact worker created an undeclared report file, producing mean overall quality of 98.33 versus 100. See [the result](evals/context-efficiency/results/2026-08-22-contract-v-padding.md) and [the evaluation protocol](references/context-evaluation.md).
 
 ## Installation as a skill
 
