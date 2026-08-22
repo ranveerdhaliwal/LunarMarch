@@ -28,7 +28,7 @@ See [references/influences.md](references/influences.md) for the projects studie
 
 ## Current status
 
-Version `0.1.0` includes the skill, contract schema, Luna `codex exec` transport, durable run state, scope snapshots, integrity gates, recovery-safe status, examples, and offline tests. Live model evaluation is intentionally separate from the offline suite.
+Version `0.1.0` includes the skill, contract schema, Luna `codex exec` transport, durable run state, scope snapshots, integrity gates, recovery-safe status, examples, and offline tests. The first model-backed Task evaluation completed successfully on 2026-08-22; see [references/live-test-results-2026-08-22.md](references/live-test-results-2026-08-22.md).
 
 ## Quick start
 

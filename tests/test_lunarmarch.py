@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -15,6 +16,7 @@ from lm_core import (  # noqa: E402
     accept_phase,
     accept_task,
     add_task,
+    capture_snapshot,
     finish_attempt,
     freeze_phase,
     gate_attempt,
@@ -107,6 +109,17 @@ class LunarMarchTests(unittest.TestCase):
         gate = gate_attempt(self.run, attempt)
         self.assertFalse(gate["clear"])
         self.assertTrue(any("outside allowed_paths" in error for error in gate["errors"]))
+
+    def test_git_snapshot_ignores_python_cache_artifacts(self) -> None:
+        subprocess.run(["git", "-C", str(self.project), "init", "-b", "main"], check=True, capture_output=True)
+        cache = self.project / "__pycache__"
+        cache.mkdir()
+        (cache / "app.cpython-312.pyc").write_bytes(b"generated")
+        (self.project / "src" / "standalone.pyc").write_bytes(b"generated")
+        snapshot = capture_snapshot(self.project, self.run)
+        self.assertEqual(snapshot["source"], "git")
+        self.assertNotIn("__pycache__/app.cpython-312.pyc", snapshot["files"])
+        self.assertNotIn("src/standalone.pyc", snapshot["files"])
 
     def test_gate_rejects_read_only_mutation(self) -> None:
         self.add_contract(role_hint="scout", acceptance_commands=[])
@@ -213,6 +226,40 @@ sys.stdin.read()
         reservation = json.loads((attempt / "reservation.json").read_text(encoding="utf-8"))
         self.assertEqual(reservation["model"], "gpt-5.6-luna")
         self.assertEqual(reservation["effort"], "high")
+        command = json.loads((attempt / "worker.log").read_text(encoding="utf-8").splitlines()[0].removeprefix("command="))
+        self.assertIn("--approve-for-me", command)
+        self.assertNotIn("-s", command)
+        self.assertTrue(gate_attempt(self.run, attempt)["clear"])
+
+    def test_read_only_launcher_uses_explicit_sandbox_without_auto_approval(self) -> None:
+        self.add_contract(role_hint="reviewer", acceptance_commands=[])
+        fake = Path(self.temporary.name) / "fake-codex-read-only"
+        fake.write_text(
+            """#!/usr/bin/env python3
+import pathlib
+import sys
+args = sys.argv[1:]
+report = pathlib.Path(args[args.index('--output-last-message') + 1])
+report.write_text('review complete\\n', encoding='utf-8')
+sys.stdin.read()
+""",
+            encoding="utf-8",
+        )
+        fake.chmod(0o755)
+        attempt, terminal = launch_worker(
+            self.run,
+            "demo-task",
+            "reviewer",
+            "gpt-5.6-luna",
+            "high",
+            str(fake),
+            True,
+            30,
+        )
+        self.assertEqual(terminal["exit_code"], 0)
+        command = json.loads((attempt / "worker.log").read_text(encoding="utf-8").splitlines()[0].removeprefix("command="))
+        self.assertEqual(command[command.index("-s") + 1], "read-only")
+        self.assertNotIn("--approve-for-me", command)
         self.assertTrue(gate_attempt(self.run, attempt)["clear"])
 
     def test_march_phase_requires_freeze_and_auditor(self) -> None:

@@ -25,10 +25,11 @@ reservation.json
 worker.log
 report.md
 terminal-scope.json
+terminal-project.json
 terminal.json
 gate.json
 ```
 
-The reservation binds contract, prompt, role, model, effort, sandbox, and baseline by hash. The terminal binds the frozen post-attempt source movement and command results. Gate verification detects mutation of these artifacts, undeclared writes, read-only-role writes, missing reports, worker failure, and failed or missing acceptance commands.
+The reservation binds contract, prompt, role, model, effort, sandbox, and baseline by hash. The terminal binds the frozen post-attempt source movement, full project snapshot, and command results. Gate verification detects mutation of these artifacts, undeclared writes, read-only-role writes, missing reports, worker failure, and failed or missing acceptance commands.
 
 Gate results contain `clear`, `errors`, `warnings`, and the exact frozen changed paths. `clear: true` only establishes objective integrity. A Reviewer and parent still judge engineering meaning.

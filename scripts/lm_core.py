@@ -314,9 +314,12 @@ def capture_snapshot(project_root: Path, run_root: Path | None = None) -> dict[s
     files: dict[str, dict[str, Any]] = {}
     for relative in sorted(set(paths)):
         normalized = relative.replace("\\", "/").lstrip("./")
+        components = normalized.split("/")
         if not normalized or normalized == ".git" or normalized.startswith(".git/"):
             continue
         if normalized == ".lunarmarch" or normalized.startswith(".lunarmarch/"):
+            continue
+        if "__pycache__" in components or normalized.endswith((".pyc", ".pyo")):
             continue
         if excluded and (normalized == excluded or normalized.startswith(excluded + "/")):
             continue
@@ -717,14 +720,16 @@ def launch_worker(
         f'model_reasoning_effort="{reservation["effort"]}"',
         "-c",
         "agents.max_depth=0",
-        "-s",
-        reservation["sandbox"],
         "--output-last-message",
         reservation["report"],
         "-",
     ]
     if reservation["sandbox"] == "workspace-write":
+        # Current Codex treats --approve-for-me as the workspace-write policy;
+        # passing it together with --sandbox is a CLI conflict.
         command.insert(-1, "--approve-for-me")
+    else:
+        command[-1:-1] = ["-s", reservation["sandbox"]]
     prompt = Path(reservation["prompt"]).read_text(encoding="utf-8")
     result = subprocess.run(command, input=prompt, text=True, capture_output=True, check=False)
     atomic_write_bytes(
