@@ -73,6 +73,8 @@ Never edit `state.json`, reservations, terminal records, gates, or frozen scope 
 
 For a first model-backed evaluation, follow [references/live-test.md](references/live-test.md). It uses a disposable project and keeps live usage out of the offline test suite.
 
+When auditing LunarMarch itself or interpreting its published evidence, read [references/testing-and-evaluation.md](references/testing-and-evaluation.md). Keep fixture-specific findings distinct from general model claims.
+
 ## Stop conditions
 
 Continue until the requested outcome is complete or a real boundary is reached. Stop for missing authority, unsafe/destructive permission, inaccessible required systems, conflicting governing requirements, an unknown active writer, or exhausted retry/escalation budget. Do not turn ordinary worker failure into a human blocker while a safe bounded route remains.

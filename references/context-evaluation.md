@@ -57,7 +57,7 @@ python3 <skill>/scripts/context_eval.py run \
 
 The runner uses `codex exec --json`, fresh project copies, randomized trial order, hidden post-run graders, source snapshots, and a machine-readable result per trial. It writes `summary.json` and `report.md`. Running it consumes model usage and may require permission for nested Codex access to authenticated local state.
 
-Use `--conditions contract full --repetitions 1` only as a plumbing smoke test. It is not enough evidence for a quality claim.
+Use `--conditions contract full --repetitions 2` only as a position-balanced plumbing smoke test. It is not enough evidence for a quality claim.
 
 Only publish a result produced from a clean suite commit with `dirty_suite_override` set to `false`, a complete expected-trial roster, and telemetry for every paired trial. An earlier diagnostic run exposed condition labels in filesystem paths and was intentionally invalidated rather than cited as evidence.
 

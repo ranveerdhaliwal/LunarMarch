@@ -28,7 +28,7 @@ See [references/influences.md](references/influences.md) for the projects studie
 
 ## Current status
 
-Version `0.1.0` includes the skill, contract schema, Luna `codex exec` transport, durable run state, scope snapshots, integrity gates, recovery-safe status, examples, and offline tests. The first model-backed Task evaluation completed successfully on 2026-08-22; see [references/live-test-results-2026-08-22.md](references/live-test-results-2026-08-22.md).
+Version `0.1.0` includes the skill, contract schema, Luna `codex exec` transport, durable run state, scope snapshots, integrity gates, recovery-safe status, examples, and offline tests. The first model-backed Task evaluation completed successfully on 2026-08-22; see [references/live-test-results-2026-08-22.md](references/live-test-results-2026-08-22.md). The complete verification record—including all 28 automated tests, live trials, invalidated diagnostics, evaluator hardening, limitations, and reproduction commands—is in [references/testing-and-evaluation.md](references/testing-and-evaluation.md).
 
 ## Quick start
 
@@ -57,6 +57,30 @@ The model-backed procedure is documented in [references/live-test.md](references
 ## Measured context policy
 
 Native workers default to no inherited conversation plus a compact resolved contract and exact workspace paths. A bundled evaluator measures whether that saves usage without degrading task quality. It uses opaque trial identities, counterbalanced order, deterministic hidden graders, authoritative terminal usage telemetry, and completeness checks. In the first clean six-pair case study, compact context used 17.9% fewer cumulative tokens; all code-behavior checks passed, but one compact worker created an undeclared report file, producing mean overall quality of 98.33 versus 100. See [the result](evals/context-efficiency/results/2026-08-22-contract-v-padding.md) and [the evaluation protocol](references/context-evaluation.md).
+
+### What the evidence currently says
+
+| Question | Current evidence |
+|---|---|
+| Does compact resolved context save usage? | Yes on the bundled fixture: 17.9% fewer total tokens and 30.0% fewer uncached input tokens. |
+| Did compact context produce incorrect code? | No. All hidden behavior, public tests, and compilation checks passed in all 12 trials. |
+| Was overall execution quality identical? | No. One compact trial created an undeclared report file, so mean overall quality was 98.33 versus 100. |
+| Is compact context proven universally better? | No. This is a clean but exploratory single-fixture result. |
+| Why keep compact as the default? | It met the predeclared two-point quality tolerance while materially reducing usage; LunarMarch still requires complete task contracts and objective review. |
+
+### Verification performed
+
+- 18 orchestration tests cover immutable contracts, attempt lifecycle, write boundaries, acceptance evidence, independent review, phase freezing, launcher permissions, recovery safety, and installation behavior.
+- 10 evaluator tests cover opaque trial identities, balanced ordering, packet equivalence, terminal usage parsing, malformed grader handling, missing-trial and missing-telemetry rejection, end-to-end scoring, and source-repository isolation.
+- One live Task evaluation exercised Builder, Reviewer, objective gates, retry recording, and parent acceptance.
+- One blinded context evaluation ran 12 Luna workers in six matched pairs from a clean commit.
+- An independent Luna audit found eight evaluator defects and one order-balance defect; all were corrected and covered by regression tests before the published run.
+
+For the exact test inventory and what each check proves, read [references/testing-and-evaluation.md](references/testing-and-evaluation.md).
+
+### Expanding to 3–5 additional fixtures
+
+A credible next set should cover research synthesis, multi-file implementation, diagnosis from incomplete evidence, resumable multi-phase work, and reviewer/fixer recovery. Estimated elapsed effort is approximately **5–7 hours for three additional fixtures** or **8–12 hours for five**, including fixture design, hidden graders, leakage review, dry runs, 12 live Luna trials per fixture, analysis, and documentation. The live model portion alone is roughly 10–15 minutes per fixture when run sequentially; careful grader design is the larger cost. These are planning estimates, not guarantees.
 
 ## Installation as a skill
 

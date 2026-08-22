@@ -26,4 +26,4 @@ jobs:
       - name: Exercise command interface
         run: python scripts/lunarmarch.py --help
       - name: Validate context evaluation plan
-        run: python scripts/context_eval.py plan --suite evals/context-efficiency/suite.json --repetitions 1
+        run: python scripts/context_eval.py plan --suite evals/context-efficiency/suite.json --conditions contract --repetitions 1
