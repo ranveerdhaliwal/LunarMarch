@@ -35,6 +35,32 @@ Worker stdout and stderr are retained in the run root as review evidence, and Op
 
 OpenCode's permission system is a tool policy, not an operating-system security boundary. A writer with shell access may still be inappropriate for hostile code, secrets, production credentials, or consequential systems. Use an isolated container or the Codex workspace sandbox for stronger containment.
 
+## DeepSeek directly through Codex
+
+DeepSeek also publishes an official Codex setup script. It configures the Codex model catalog and provider in `~/.codex/models.json` and `~/.codex/config.toml`, backs up the prior Codex configuration under `~/.codex/backup-deepseek`, and points Codex at DeepSeek's Responses-compatible endpoint. Review the script and its changes before running it; it is a remote shell script and it stores the credential in the local Codex provider configuration. It does not create a LunarMarch repository file or environment file.
+
+For WSL/Linux, the documented entry point is:
+
+```bash
+bash <(curl -fsSL https://cdn.deepseek.com/api-docs/codex-deepseek-setup.sh)
+```
+
+Choose the model in the interactive menu, enter the key when prompted, then restart Codex. The script provides a restore option and keeps the original configuration in its backup directory.
+
+After that setup, LunarMarch can use the direct Codex transport with the DeepSeek model slug:
+
+```bash
+python3 scripts/lunarmarch.py launch \
+  --run-root /absolute/project-run \
+  --task-id bounded-task \
+  --role builder \
+  --transport codex \
+  --model deepseek-v4-flash \
+  --run-checks
+```
+
+This route is native and useful for a standalone Codex smoke test. The tradeoff is that the Codex configuration is global for that local Codex installation: switching the default provider to DeepSeek can affect subsequent Codex sessions until the backed-up configuration is restored or the provider is changed again. Keep GPT-5.6 Luna as the normal LunarMarch default unless a deliberate DeepSeek Codex run is being tested.
+
 Official references:
 
 - [DeepSeek API compatibility and supported agent tools](https://api-docs.deepseek.com/guides/function_calling)
@@ -42,6 +68,7 @@ Official references:
 - [OpenCode DeepSeek provider setup](https://opencode.ai/docs/providers/)
 - [OpenCode CLI model, agent, directory, variant, and non-interactive flags](https://dev.opencode.ai/docs/cli/)
 - [OpenCode permissions](https://opencode.ai/docs/permissions/)
+- [DeepSeek Codex integration](https://api-docs.deepseek.com/quick_start/agent_integrations/codex)
 
 ## Sol orchestrator with DeepSeek workers
 

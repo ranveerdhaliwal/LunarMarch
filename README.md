@@ -68,6 +68,8 @@ OpenCode stores the DeepSeek credential; LunarMarch never reads or records the A
 
 The OpenCode adapter is covered by fake-CLI integration and permission-policy tests. No paid DeepSeek call was made in this repository yet; the first authenticated smoke test remains pending until a key and OpenCode installation are available.
 
+DeepSeek can also be configured directly as a Codex model using DeepSeek's official Codex integration. After that one-time local setup, pass `--transport codex --model deepseek-v4-flash` to LunarMarch. This is useful for a native Codex smoke test, while the OpenCode transport remains the better default for provider-neutral worker routing. The direct setup changes global `~/.codex` configuration, so review it and preserve the generated backup before switching back to Luna.
+
 The model-backed procedure is documented in [references/live-test.md](references/live-test.md). It uses a disposable intentionally-failing fixture, a Luna Builder, a fresh Luna Reviewer, objective gates, and explicit parent acceptance.
 
 ## Measured context policy
