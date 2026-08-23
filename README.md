@@ -100,6 +100,8 @@ For the exact test inventory and what each check proves, read [references/testin
 
 A credible next set should cover research synthesis, multi-file implementation, diagnosis from incomplete evidence, resumable multi-phase work, and reviewer/fixer recovery. It no longer needs to happen in one expensive session: create the full immutable manifest once, run one or two trials with `--max-new-trials`, then continue later with `--resume`. A useful cadence is one fixture design session followed by six two-trial checkpoints. Partial checkpoints are preserved but cannot support a quality claim until the balanced roster is complete. See [references/testing-and-evaluation.md](references/testing-and-evaluation.md#bite-sized-execution-plan).
 
+The concrete fixture contracts, graders, success evidence, and stop conditions are written out in [references/fixture-roadmap.md](references/fixture-roadmap.md).
+
 ## Installation as a skill
 
 For every local Codex or OpenCode chat:
