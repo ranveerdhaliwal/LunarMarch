@@ -10,6 +10,13 @@ metadata:
 
 Use Luna as the default high-volume workforce while the parent retains authority, decomposition, consequential judgment, and final acceptance. OpenCode is the supported provider-neutral transport for DeepSeek and future inexpensive workers; changing transport never weakens contracts, gates, or review requirements.
 
+## Output contract
+
+- Keep worker reports and parent summaries concise, human-readable, and evidence-first.
+- Never use the Unicode em dash character (U+2014) in any LunarMarch writing. Use a comma, colon, parentheses, or a normal hyphen instead.
+- Include token usage whenever the transport reports it: input, cached input, uncached input, output, reasoning, and total tokens. If a provider does not expose usage, write `not reported` rather than guessing.
+- Put the model, effort or variant, transport, attempt count, quality or gate result, and token totals near the start of a result summary.
+
 When asked to install, share, or use LunarMarch from another chat, read [references/installation.md](references/installation.md).
 
 ## Select the smallest mode

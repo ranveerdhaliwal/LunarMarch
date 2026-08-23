@@ -1,4 +1,4 @@
-# Live Luna smoke result — 2026-08-23
+# Live Luna smoke result: 2026-08-23
 
 ## Outcome
 
@@ -17,6 +17,7 @@ The current Codex installation successfully launched `gpt-5.6-luna` through Luna
 - Reviewer mechanical gate: clear, with no project changes
 - Parent acceptance: recorded
 - Durable run status: complete
+- Token usage: not reported for this historical run because the launcher predated JSONL usage capture. Future runs persist input, cached input, uncached input, output, reasoning, and total token fields.
 
 ## Attempt record
 

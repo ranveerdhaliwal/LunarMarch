@@ -29,6 +29,10 @@ As of 2026-08-22:
 
 The evidence supports compact resolved contracts as the current efficiency default for LunarMarch. It does not prove that compact context always preserves quality, that padding always hurts, or that the result transfers unchanged to native subagents, other models, repositories, or task classes.
 
+### Token reporting policy
+
+Token counts are the primary efficiency metric. Direct Codex workers now request JSONL events and persist the final terminal usage record in `terminal.json` and `worker.log`. The record includes input, cached input, uncached input, output, reasoning, and total tokens. OpenCode workers may not expose equivalent counts through their default output, so their fields remain `not reported` until a provider-specific usage event is available. No count is inferred from text length.
+
 ## Offline automated suite
 
 Run with:
@@ -146,7 +150,7 @@ The exploratory decision rule required at least five complete matched quality an
 
 | Metric | Compact | Padded | Difference for compact |
 |---|---:|---:|---:|
-| Trials | 6 | 6 | — |
+| Trials | 6 | 6 | n/a |
 | Fully successful | 5/6 | 6/6 | one fewer |
 | Mean overall quality | 98.33 | 100.0 | 1.67 points lower |
 | Hidden behavior passed | 6/6 | 6/6 | equal |
@@ -167,7 +171,7 @@ All six token pairs and quality pairs were observed. The run roster was complete
 
 The sole non-perfect compact run correctly implemented the requested behavior but created an undeclared `report.md` in addition to `handles.py`. It therefore lost the ten scope-discipline points. This is an execution-quality difference even though the produced code passed every behavioral check; it should not be hidden or reclassified after seeing the outcome.
 
-The 95% Wilson interval for compact's 5/6 full-success rate is 43.65%–96.99%. For padded's 6/6 it is 60.97%–100%. The broad, overlapping intervals show how uncertain a six-pair single-fixture result remains.
+The 95% Wilson interval for compact's 5/6 full-success rate is 43.65%-96.99%. For padded's 6/6 it is 60.97%-100%. The broad, overlapping intervals show how uncertain a six-pair single-fixture result remains.
 
 The aggregate, per-trial table, and exact reproduction command are in [the dated result](../evals/context-efficiency/results/2026-08-22-contract-v-padding.md). The exact generated aggregate is preserved as [JSON](../evals/context-efficiency/results/2026-08-22-contract-v-padding-summary.json).
 
@@ -276,12 +280,12 @@ The estimates below assume six compact-versus-padded pairs, or 12 live workers, 
 
 | Work | Three additional fixtures | Five additional fixtures |
 |---|---:|---:|
-| Fixture and packet design | 1.5–2.5 hours | 2.5–4 hours |
-| Deterministic public/hidden graders | 1.5–2.5 hours | 2.5–4 hours |
-| Leakage review and dry runs | 0.5–1 hour | 1–1.5 hours |
-| Sequential live Luna execution | 30–45 minutes | 50–75 minutes |
-| Audit, analysis, and documentation | 1–1.5 hours | 1.5–2.5 hours |
-| **Expected elapsed total** | **5–7 hours** | **8–12 hours** |
+| Fixture and packet design | 1.5-2.5 hours | 2.5-4 hours |
+| Deterministic public/hidden graders | 1.5-2.5 hours | 2.5-4 hours |
+| Leakage review and dry runs | 0.5-1 hour | 1-1.5 hours |
+| Sequential live Luna execution | 30-45 minutes | 50-75 minutes |
+| Audit, analysis, and documentation | 1-1.5 hours | 1.5-2.5 hours |
+| **Expected elapsed total** | **5-7 hours** | **8-12 hours** |
 
 Three additional fixtures are realistic in one focused working day. Five are more realistically one long day or two normal sessions. Research and resumability fixtures may require small evaluator extensions, so they carry more schedule risk than ordinary coding fixtures.
 
@@ -291,11 +295,11 @@ Running trials concurrently could reduce wall-clock time, but it risks adding lo
 
 Each fixture is an independent evidence unit and can be spread across days:
 
-1. **Design checkpoint, 30–60 minutes and no model usage:** write the task, compact packet, padded packet, public tests, hidden grader, and declared paths.
-2. **Offline checkpoint, 5–15 minutes and no model usage:** validate the suite, run the fake CLI end to end, and inspect leakage boundaries.
+1. **Design checkpoint, 30-60 minutes and no model usage:** write the task, compact packet, padded packet, public tests, hidden grader, and declared paths.
+2. **Offline checkpoint, 5-15 minutes and no model usage:** validate the suite, run the fake CLI end to end, and inspect leakage boundaries.
 3. **Pilot checkpoint, one matched order block:** run two trials. Treat the output only as plumbing and failure-surface evidence.
 4. **Completion checkpoints:** run two new trials at a time using `--resume`. Six two-trial checkpoints complete one 12-trial fixture.
-5. **Audit checkpoint, 15–30 minutes and no model usage:** inspect every trial, publish the aggregate, and decide whether the next fixture is worth funding.
+5. **Audit checkpoint, 15-30 minutes and no model usage:** inspect every trial, publish the aggregate, and decide whether the next fixture is worth funding.
 
 Nothing requires completing three or five fixtures before learning something. Finish and publish one fixture at a time. Stop after any fixture if the result is already unstable, the grader is not discriminating, or the next experiment is not worth its usage.
 

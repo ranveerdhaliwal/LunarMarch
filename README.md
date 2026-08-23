@@ -28,7 +28,7 @@ See [references/influences.md](references/influences.md) for the projects studie
 
 ## Current status
 
-Version `0.2.0` includes the skill, contract schema, Codex and OpenCode worker transports, durable run state, scope snapshots, integrity gates, checkpointed evaluations, recovery-safe status, examples, and offline tests. The first model-backed Task evaluation completed successfully on 2026-08-22; a one-call Luna smoke also succeeded on 2026-08-23. See [the first Task result](references/live-test-results-2026-08-22.md) and [the latest smoke result](references/live-test-results-2026-08-23.md). The complete verification record—including all 35 automated tests, live trials, invalidated diagnostics, evaluator hardening, limitations, and reproduction commands—is in [references/testing-and-evaluation.md](references/testing-and-evaluation.md).
+Version `0.2.0` includes the skill, contract schema, Codex and OpenCode worker transports, durable run state, scope snapshots, integrity gates, checkpointed evaluations, recovery-safe status, examples, and offline tests. The first model-backed Task evaluation completed successfully on 2026-08-22; a one-call Luna smoke also succeeded on 2026-08-23. See [the first Task result](references/live-test-results-2026-08-22.md) and [the latest smoke result](references/live-test-results-2026-08-23.md). The complete verification record, including all 35 automated tests, live trials, invalidated diagnostics, evaluator hardening, limitations, and reproduction commands, is in [references/testing-and-evaluation.md](references/testing-and-evaluation.md).
 
 ## Quick start
 
@@ -50,7 +50,7 @@ python3 scripts/lunarmarch.py launch \
   --run-checks
 ```
 
-The default path requires an installed, authenticated Codex CLI with access to `gpt-5.6-luna`. Run `python3 -m unittest discover -s tests -v` for offline verification. CI repeats compilation, the command-interface smoke check, and the full offline suite on Python 3.11–3.13.
+The default path requires an installed, authenticated Codex CLI with access to `gpt-5.6-luna`. Run `python3 -m unittest discover -s tests -v` for offline verification. CI repeats compilation, the command-interface smoke check, and the full offline suite on Python 3.11-3.13.
 
 To use DeepSeek through OpenCode instead:
 
@@ -74,7 +74,7 @@ The model-backed procedure is documented in [references/live-test.md](references
 
 ## Measured context policy
 
-Native workers default to no inherited conversation plus a compact resolved contract and exact workspace paths. A bundled evaluator measures whether that saves usage without degrading task quality. It uses opaque trial identities, counterbalanced order, deterministic hidden graders, authoritative terminal usage telemetry, and completeness checks. In the first clean six-pair case study, compact context used 17.9% fewer cumulative tokens; all code-behavior checks passed, but one compact worker created an undeclared report file, producing mean overall quality of 98.33 versus 100. See [the result](evals/context-efficiency/results/2026-08-22-contract-v-padding.md) and [the evaluation protocol](references/context-evaluation.md).
+Native workers default to no inherited conversation plus a compact resolved contract and exact workspace paths. A bundled evaluator measures whether that saves usage without degrading task quality. It uses opaque trial identities, counterbalanced order, deterministic hidden graders, authoritative terminal usage telemetry, and completeness checks. In the first clean six-pair case study, compact context used 17.9% fewer cumulative tokens; all code-behavior checks passed, but one compact worker created an undeclared report file, producing mean overall quality of 98.33 versus 100. See [the result](evals/context-efficiency/results/2026-08-22-contract-v-padding.md) and [the evaluation protocol](references/context-evaluation.md). New direct Codex worker runs also persist token fields in their terminal records. Use `not reported` when a provider does not expose usage.
 
 ### What the evidence currently says
 
@@ -96,7 +96,7 @@ Native workers default to no inherited conversation plus a compact resolved cont
 
 For the exact test inventory and what each check proves, read [references/testing-and-evaluation.md](references/testing-and-evaluation.md).
 
-### Expanding to 3–5 additional fixtures
+### Expanding to 3-5 additional fixtures
 
 A credible next set should cover research synthesis, multi-file implementation, diagnosis from incomplete evidence, resumable multi-phase work, and reviewer/fixer recovery. It no longer needs to happen in one expensive session: create the full immutable manifest once, run one or two trials with `--max-new-trials`, then continue later with `--resume`. A useful cadence is one fixture design session followed by six two-trial checkpoints. Partial checkpoints are preserved but cannot support a quality claim until the balanced roster is complete. See [references/testing-and-evaluation.md](references/testing-and-evaluation.md#bite-sized-execution-plan).
 

@@ -1,4 +1,4 @@
-# Compact contract versus padded contract — 2026-08-22
+# Compact contract versus padded contract , 2026-08-22
 
 ## Conclusion
 
@@ -43,7 +43,7 @@ Trial names and project paths were opaque. The evaluator launched each trial in 
 | Mean command calls | 4.50 | 5.17 | 12.9% fewer |
 | Infrastructure failures | 0 | 0 | equal |
 
-The 95% Wilson intervals are 43.65%–96.99% for compact's 5/6 full-success rate and 60.97%–100% for padded's 6/6. They overlap substantially, underscoring the uncertainty. The one compact failure was scope discipline, not incorrect implementation: it changed `handles.py` correctly but also created `report.md`.
+The 95% Wilson intervals are 43.65%-96.99% for compact's 5/6 full-success rate and 60.97%-100% for padded's 6/6. They overlap substantially, underscoring the uncertainty. The one compact failure was scope discipline, not incorrect implementation: it changed `handles.py` correctly but also created `report.md`.
 
 ## Per-trial audit
 

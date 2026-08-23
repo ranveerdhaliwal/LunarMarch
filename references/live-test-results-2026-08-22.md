@@ -1,4 +1,4 @@
-# Live Luna evaluation — 2026-08-22
+# Live Luna evaluation: 2026-08-22
 
 ## Outcome
 

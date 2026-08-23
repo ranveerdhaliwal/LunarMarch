@@ -206,6 +206,7 @@ class LunarMarchTests(unittest.TestCase):
         fake.write_text(
             """#!/usr/bin/env python3
 import pathlib
+import json
 import sys
 args = sys.argv[1:]
 project = pathlib.Path(args[args.index('-C') + 1])
@@ -213,6 +214,7 @@ report = pathlib.Path(args[args.index('--output-last-message') + 1])
 project.joinpath('src/app.py').write_text('VALUE = 3\\n', encoding='utf-8')
 report.write_text('fake Luna completed\\n', encoding='utf-8')
 sys.stdin.read()
+print(json.dumps({'type': 'turn.completed', 'usage': {'input_tokens': 120, 'input_tokens_details': {'cached_tokens': 20}, 'output_tokens': 30, 'output_tokens_details': {'reasoning_tokens': 10}, 'total_tokens': 150}}))
 """,
             encoding="utf-8",
         )
@@ -228,6 +230,8 @@ sys.stdin.read()
             30,
         )
         self.assertEqual(terminal["exit_code"], 0)
+        self.assertEqual(terminal["usage"]["total_tokens"], 150)
+        self.assertEqual(terminal["usage"]["uncached_input_tokens"], 100)
         reservation = json.loads((attempt / "reservation.json").read_text(encoding="utf-8"))
         self.assertEqual(reservation["model"], "gpt-5.6-luna")
         self.assertEqual(reservation["effort"], "high")
@@ -242,6 +246,7 @@ sys.stdin.read()
         fake.write_text(
             """#!/usr/bin/env python3
 import pathlib
+import json
 import sys
 args = sys.argv[1:]
 report = pathlib.Path(args[args.index('--output-last-message') + 1])

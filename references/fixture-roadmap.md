@@ -16,11 +16,11 @@ Use one worker call at a time when usage matters:
 
 For context-policy experiments, use the separate evaluator and its checkpointing rules. Do not combine those token-comparison trials with the task-fixture results below.
 
-## Fixture 1 — research synthesis
+## Fixture 1 , research synthesis
 
 **Question:** Can a worker reconcile several conflicting local sources into a useful answer without inventing facts?
 
-**Disposable project:** a small folder containing 3–5 short source documents, one deliberately conflicting fact, and a required output template.
+**Disposable project:** a small folder containing 3-5 short source documents, one deliberately conflicting fact, and a required output template.
 
 **Contract and grader:**
 
@@ -31,7 +31,7 @@ For context-policy experiments, use the separate evaluator and its checkpointing
 
 **Success evidence:** all deterministic checks pass, no source or answer files outside scope change, and the Reviewer finds no invented or uncited claim.
 
-## Fixture 2 — multi-file implementation
+## Fixture 2 , multi-file implementation
 
 **Question:** Can a worker change a small API across modules while preserving compatibility?
 
@@ -45,7 +45,7 @@ For context-policy experiments, use the separate evaluator and its checkpointing
 
 **Success evidence:** public and hidden behavior passes, the diff stays within declared modules, and the independent Reviewer checks call sites rather than trusting the Builder report.
 
-## Fixture 3 — diagnosis from incomplete evidence
+## Fixture 3 , diagnosis from incomplete evidence
 
 **Question:** Can a read-only worker identify a root cause without making an unauthorized fix?
 
@@ -59,7 +59,7 @@ For context-policy experiments, use the separate evaluator and its checkpointing
 
 **Success evidence:** the project snapshot is unchanged, the diagnosis identifies the seeded cause, and the report distinguishes facts from hypotheses.
 
-## Fixture 4 — resumable multi-phase work
+## Fixture 4 , resumable multi-phase work
 
 **Question:** Can LunarMarch resume a multi-phase effort without losing authority boundaries or accepting stale evidence?
 
@@ -74,7 +74,7 @@ For context-policy experiments, use the separate evaluator and its checkpointing
 
 **Success evidence:** restart skips completed work, rejects changed contracts or frozen artifacts, honors dependencies, and reaches a clear Auditor or parent acceptance.
 
-## Fixture 5 — Reviewer/Fixer recovery
+## Fixture 5 , Reviewer/Fixer recovery
 
 **Question:** Can an independent review detect and safely repair a plausible defect?
 

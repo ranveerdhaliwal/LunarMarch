@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from worker_transports import SUPPORTED_TRANSPORTS, build_worker_invocation
+from usage import extract_usage_jsonl
 
 
 SCHEMA_VERSION = 1
@@ -555,6 +556,7 @@ def finish_attempt(
     attempt_dir: Path,
     exit_code: int,
     check_results: list[dict[str, Any]] | None = None,
+    usage: dict[str, int | None] | None = None,
 ) -> dict[str, Any]:
     run_root = resolve_existing_directory(run_root)
     attempt_dir = resolve_within(run_root, attempt_dir)
@@ -591,6 +593,15 @@ def finish_attempt(
         "report": str(report_path),
         "report_sha256": sha256_file(report_path) if report_path.is_file() else None,
         "checks": check_results or [],
+        "usage": usage
+        or {
+            "input_tokens": None,
+            "cached_input_tokens": None,
+            "uncached_input_tokens": None,
+            "output_tokens": None,
+            "reasoning_tokens": None,
+            "total_tokens": None,
+        },
     }
     atomic_write_json(terminal_path, terminal)
     state = load_state(run_root)
@@ -757,20 +768,22 @@ def launch_worker(
         returncode = 124
         stderr = (stderr + "\nworker timed out").strip()
     result = subprocess.CompletedProcess(invocation.command, returncode, stdout, stderr)
+    usage = extract_usage_jsonl(result.stdout)
     if invocation.capture_stdout_as_report and result.stdout.strip():
         atomic_write_bytes(Path(reservation["report"]), result.stdout.encode("utf-8", "replace"))
     atomic_write_bytes(
         attempt_dir / "worker.log",
         (
             f"command={json.dumps(invocation.logged_command)}\ntransport={transport}\n"
-            f"exit_code={result.returncode}\n\nSTDOUT\n{result.stdout}\n\nSTDERR\n{result.stderr}\n"
+            f"exit_code={result.returncode}\nusage={json.dumps(usage, sort_keys=True)}\n\n"
+            f"STDOUT\n{result.stdout}\n\nSTDERR\n{result.stderr}\n"
         ).encode("utf-8", "replace"),
     )
     _, _, contract = contract_for_task(Path(run_root).resolve(), load_state(Path(run_root).resolve()), task_id)
     checks: list[dict[str, Any]] = []
     if result.returncode == 0 and run_acceptance:
         checks = run_checks(project_root, contract["acceptance_commands"], check_timeout)
-    terminal = finish_attempt(Path(run_root).resolve(), attempt_dir, result.returncode, checks)
+    terminal = finish_attempt(Path(run_root).resolve(), attempt_dir, result.returncode, checks, usage)
     return attempt_dir, terminal
 
 

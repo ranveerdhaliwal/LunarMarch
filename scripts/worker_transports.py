@@ -114,6 +114,7 @@ def build_worker_invocation(
             f'model_reasoning_effort="{effort}"',
             "-c",
             "agents.max_depth=0",
+            "--json",
             "--output-last-message",
             str(report_path),
             "-",
