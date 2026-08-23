@@ -40,6 +40,7 @@ Useful existing examples:
 | Output tokens | <number or not reported> |
 | Reasoning tokens | <number or not reported> |
 | Total tokens | <number or not reported> |
+| Uncached input plus output | <uncached input tokens + output tokens, or not reported> |
 
 ## Evidence
 

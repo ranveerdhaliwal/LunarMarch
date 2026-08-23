@@ -232,6 +232,7 @@ print(json.dumps({'type': 'turn.completed', 'usage': {'input_tokens': 120, 'inpu
         self.assertEqual(terminal["exit_code"], 0)
         self.assertEqual(terminal["usage"]["total_tokens"], 150)
         self.assertEqual(terminal["usage"]["uncached_input_tokens"], 100)
+        self.assertEqual(terminal["usage"]["uncached_input_plus_output"], 130)
         reservation = json.loads((attempt / "reservation.json").read_text(encoding="utf-8"))
         self.assertEqual(reservation["model"], "gpt-5.6-luna")
         self.assertEqual(reservation["effort"], "high")
@@ -239,6 +240,49 @@ print(json.dumps({'type': 'turn.completed', 'usage': {'input_tokens': 120, 'inpu
         self.assertIn("--approve-for-me", command)
         self.assertNotIn("-s", command)
         self.assertTrue(gate_attempt(self.run, attempt)["clear"])
+
+    def test_reviewer_packet_defers_authoritative_checks_to_launcher(self) -> None:
+        self.add_contract(role_hint="reviewer", acceptance_commands=[])
+        attempt = reserve_attempt(self.run, "demo-task", "reviewer")
+        prompt = (attempt / "prompt.md").read_text(encoding="utf-8")
+        self.assertIn("launcher-run acceptance and invariant commands are authoritative", prompt)
+        self.assertIn("cannot create caches or temporary files", prompt)
+        self.assertIn("exact inputs and allowed paths", prompt)
+
+    def test_reviewer_attempt_budget_requires_parent_escalation(self) -> None:
+        self.add_contract(role_hint="reviewer", acceptance_commands=[], max_reviewer_attempts=2)
+        for _ in range(2):
+            attempt = reserve_attempt(self.run, "demo-task", "reviewer")
+            self.finish_with_report(attempt, [])
+        with self.assertRaisesRegex(LunarMarchError, "reviewer attempt budget exhausted"):
+            reserve_attempt(self.run, "demo-task", "reviewer")
+
+    def test_protected_invariant_detects_regression_inside_allowed_path(self) -> None:
+        command = "python3 -c \"from pathlib import Path; assert 'VALUE = 1' in Path('src/app.py').read_text()\""
+        self.add_contract(
+            acceptance_commands=[],
+            protected_invariants=["The original demo value remains available."],
+            invariant_commands=[command],
+        )
+        attempt = reserve_attempt(self.run, "demo-task", "builder")
+        baseline = json.loads((attempt / "baseline-invariants.json").read_text(encoding="utf-8"))
+        self.assertEqual(baseline["checks"][0]["returncode"], 0)
+        (self.project / "src" / "app.py").write_text("VALUE = 2\n", encoding="utf-8")
+        self.finish_with_report(
+            attempt,
+            [
+                {
+                    "kind": "invariant",
+                    "command": command,
+                    "returncode": 1,
+                    "stdout": "",
+                    "stderr": "assertion failed",
+                }
+            ],
+        )
+        gate = gate_attempt(self.run, attempt)
+        self.assertFalse(gate["clear"])
+        self.assertTrue(any("protected invariant regressed from baseline" in error for error in gate["errors"]))
 
     def test_read_only_launcher_uses_explicit_sandbox_without_auto_approval(self) -> None:
         self.add_contract(role_hint="reviewer", acceptance_commands=[])
@@ -277,10 +321,15 @@ sys.stdin.read()
         fake = Path(self.temporary.name) / "fake-opencode"
         fake.write_text(
             """#!/usr/bin/env python3
+import os
 import pathlib
 import sys
 args = sys.argv[1:]
 project = pathlib.Path(args[args.index('--dir') + 1])
+for name in ('TMPDIR', 'TMP', 'TEMP', 'XDG_RUNTIME_DIR', 'XDG_CACHE_HOME', 'XDG_DATA_HOME', 'XDG_STATE_HOME'):
+    path = pathlib.Path(os.environ[name])
+    assert path.is_dir(), name
+    path.joinpath(name + '.probe').write_text('ok', encoding='utf-8')
 project.joinpath('src/app.py').write_text('VALUE = 4\\n', encoding='utf-8')
 print('DeepSeek worker completed with bounded evidence.')
 """,
@@ -312,6 +361,10 @@ print('DeepSeek worker completed with bounded evidence.')
         self.assertNotIn((attempt / "prompt.md").read_text(encoding="utf-8"), command)
         self.assertIn("--pure", command)
         self.assertIn("--auto", command)
+        self.assertEqual(command[-2:], ["--file", str(attempt / "prompt.md")])
+        runtime_root = attempt / "opencode-runtime"
+        self.assertTrue((runtime_root / "cache" / "XDG_CACHE_HOME.probe").is_file())
+        self.assertTrue((runtime_root / "tmp" / "TMPDIR.probe").is_file())
         self.assertTrue(gate_attempt(self.run, attempt)["clear"])
 
     def test_opencode_readonly_policy_denies_mutation_and_delegation(self) -> None:

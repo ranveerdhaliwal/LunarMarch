@@ -28,7 +28,7 @@ See [references/influences.md](references/influences.md) for the projects studie
 
 ## Current status
 
-Version `0.2.0` includes the skill, contract schema, Codex and OpenCode worker transports, durable run state, scope snapshots, integrity gates, checkpointed evaluations, recovery-safe status, examples, and offline tests. The first model-backed Task evaluation completed successfully on 2026-08-22; a one-call Luna smoke also succeeded on 2026-08-23. See [the first Task result](references/live-test-results-2026-08-22.md) and [the latest smoke result](references/live-test-results-2026-08-23.md). The complete verification record, including all 35 automated tests, live trials, invalidated diagnostics, evaluator hardening, limitations, and reproduction commands, is in [references/testing-and-evaluation.md](references/testing-and-evaluation.md).
+Version `0.2.0` includes the skill, contract schema, Codex and OpenCode worker transports, durable run state, scope snapshots, integrity gates, checkpointed evaluations, recovery-safe status, examples, and offline tests. The first model-backed Task evaluation completed successfully on 2026-08-22; a one-call Luna smoke also succeeded on 2026-08-23. A real two-phase Studio Core run accepted nine tasks, exposed review-heavy marginal usage, and drove the latest transport and contract improvements. See [the Studio Core results](references/live-test-results-2026-08-23-studio-core.md) and [improvement plan](references/studio-core-retrospective-2026-08-23.md). The complete verification record, including all 38 automated tests, live trials, invalidated diagnostics, evaluator hardening, limitations, and reproduction commands, is in [references/testing-and-evaluation.md](references/testing-and-evaluation.md).
 
 ## Quick start
 
@@ -88,7 +88,7 @@ Native workers default to no inherited conversation plus a compact resolved cont
 
 ### Verification performed
 
-- 23 orchestration and transport tests cover immutable contracts, attempt lifecycle, write boundaries, acceptance evidence, independent review, phase freezing, Codex/OpenCode launch policies, environment isolation, bounded timeouts, recovery safety, and installation behavior.
+- 26 orchestration and transport tests cover immutable contracts, attempt lifecycle, write boundaries, acceptance evidence, protected invariants, review budgets, independent review, phase freezing, Codex/OpenCode launch policies, environment isolation, bounded timeouts, recovery safety, and installation behavior.
 - 12 evaluator tests cover opaque trial identities, balanced ordering, packet equivalence, terminal usage parsing, malformed grader handling, missing-trial and missing-telemetry rejection, sealed checkpoint/resume, tamper rejection, end-to-end scoring, and source-repository isolation.
 - One live Task evaluation exercised Builder, Reviewer, objective gates, retry recording, and parent acceptance.
 - One blinded context evaluation ran 12 Luna workers in six matched pairs from a clean commit.

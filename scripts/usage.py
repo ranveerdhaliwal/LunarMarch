@@ -32,6 +32,7 @@ def extract_usage_jsonl(text: str) -> dict[str, int | None]:
             "output_tokens": None,
             "reasoning_tokens": None,
             "total_tokens": None,
+            "uncached_input_plus_output": None,
         }
     usage = candidates[-1]
     input_tokens = _optional_int(usage.get("input_tokens"))
@@ -48,11 +49,13 @@ def extract_usage_jsonl(text: str) -> dict[str, int | None]:
     )
     if total_tokens is None and input_tokens is not None and output_tokens is not None:
         total_tokens = input_tokens + output_tokens
+    uncached = input_tokens - cached if input_tokens is not None and cached is not None else None
     return {
         "input_tokens": input_tokens,
         "cached_input_tokens": cached,
-        "uncached_input_tokens": input_tokens - cached if input_tokens is not None and cached is not None else None,
+        "uncached_input_tokens": uncached,
         "output_tokens": output_tokens,
         "reasoning_tokens": reasoning,
         "total_tokens": total_tokens,
+        "uncached_input_plus_output": uncached + output_tokens if uncached is not None and output_tokens is not None else None,
     }

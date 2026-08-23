@@ -156,14 +156,20 @@ def build_worker_invocation(
             agent_name,
             "--format",
             "default",
-            "--file",
-            str(prompt_path),
         ]
         if variant:
             command.extend(["--variant", variant])
         if sandbox == "workspace-write":
             command.append("--auto")
-        command.append("Execute the attached LunarMarch worker packet and return its requested report.")
+        # OpenCode treats --file as an array option. Keep it last so the
+        # positional instruction cannot be consumed as another attachment.
+        command.extend(
+            [
+                "Execute the attached LunarMarch worker packet and return its requested report.",
+                "--file",
+                str(prompt_path),
+            ]
+        )
         return WorkerInvocation(command, env, None, True, command[:])
 
     raise ValueError(f"unsupported worker transport: {transport}")

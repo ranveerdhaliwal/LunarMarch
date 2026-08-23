@@ -81,6 +81,7 @@ class ContextEvalTests(unittest.TestCase):
         self.assertEqual(usage["input_tokens"], 120)
         self.assertEqual(usage["cached_input_tokens"], 40)
         self.assertEqual(usage["uncached_input_tokens"], 80)
+        self.assertEqual(usage["uncached_input_plus_output"], 110)
         self.assertEqual(usage["reasoning_tokens"], 12)
         self.assertEqual(usage["total_tokens"], 150)
 
@@ -106,6 +107,7 @@ class ContextEvalTests(unittest.TestCase):
         )
         usage = extract_usage_jsonl(events)
         self.assertEqual(usage["total_tokens"], 125)
+        self.assertEqual(usage["uncached_input_plus_output"], 65)
         self.assertEqual(usage["reasoning_tokens"], 7)
         metrics = extract_event_metrics(events)
         self.assertEqual(metrics["thread_id"], "thread-1")

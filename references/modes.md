@@ -18,11 +18,13 @@ Use for one bounded mutation or technical deliverable:
 
 ```text
 optional Scout → Builder → objective gate → independent Reviewer
-                                      fail → Fixer → fresh verification
-                                      pass → parent acceptance
+                                      finding → same-task Fixer → fresh Reviewer of latest snapshot
+                                      clear → parent acceptance
 ```
 
 A Fixer may consume supplied findings. It does not inherit permission to redesign unrelated code. The implementer never reviews itself.
+
+For routine work, use one Reviewer after the Builder and one after a same-task Fixer. Put `max_reviewer_attempts: 2` in the contract. Do not split a small repair into another task solely to create another review cycle. Use a separate task only when ownership, dependencies, rollout, or rollback genuinely needs isolation.
 
 ## March
 

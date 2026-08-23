@@ -606,7 +606,15 @@ def summarize(
         quality = [float(item["quality_score"]) for item in rows]
         latency = [float(item["worker"]["wall_seconds"]) for item in rows]
         usage_summary: dict[str, Any] = {}
-        for field in ("input_tokens", "cached_input_tokens", "uncached_input_tokens", "output_tokens", "reasoning_tokens", "total_tokens"):
+        for field in (
+            "input_tokens",
+            "cached_input_tokens",
+            "uncached_input_tokens",
+            "output_tokens",
+            "reasoning_tokens",
+            "total_tokens",
+            "uncached_input_plus_output",
+        ):
             values = [int(item["usage"][field]) for item in rows if item["usage"].get(field) is not None]
             usage_summary[field] = {"mean": _mean(values), "median": _median(values), "observed": len(values)}
         successes = sum(bool(item["task_success"]) for item in rows)
@@ -696,14 +704,15 @@ def render_report(summary: dict[str, Any]) -> str:
         "",
         summary["interpretation_boundary"],
         "",
-        "| Condition | Trials | Success | Quality mean | Input tokens mean | Total tokens mean | Worker seconds mean |",
-        "|---|---:|---:|---:|---:|---:|---:|",
+        "| Condition | Trials | Success | Quality mean | Input tokens mean | Total tokens mean | Uncached plus output mean | Worker seconds mean |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for condition, value in summary["conditions"].items():
         usage = value["usage"]
         lines.append(
             f"| {condition} | {value['trials']} | {value['task_success_rate']} | {value['quality']['mean']} | "
-            f"{usage['input_tokens']['mean']} | {usage['total_tokens']['mean']} | {value['worker_wall_seconds']['mean']} |"
+            f"{usage['input_tokens']['mean']} | {usage['total_tokens']['mean']} | "
+            f"{usage['uncached_input_plus_output']['mean']} | {value['worker_wall_seconds']['mean']} |"
         )
     lines.extend(["", "## Paired differences from compact contract", ""])
     for condition, value in summary["paired_vs_contract"].items():

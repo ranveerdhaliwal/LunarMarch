@@ -16,6 +16,11 @@
     "Invalid cursors produce the existing client-error shape.",
     "Authorization behavior remains unchanged."
   ],
+  "protected_invariants": [
+    "Existing authorization behavior remains unchanged."
+  ],
+  "invariant_commands": [],
+  "max_reviewer_attempts": 2,
   "inputs": [],
   "non_goals": [
     "Do not change the database schema.",

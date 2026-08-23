@@ -29,7 +29,7 @@ python3 scripts/lunarmarch.py launch \
   --run-checks
 ```
 
-The adapter runs `opencode --pure run`, attaches a fresh prompt from a file rather than placing it in the process argument list, disables automatic sharing and updates, sanitizes the inherited environment, closes standard input, enforces a timeout, and injects a temporary agent policy. Nested tasks, external-directory access, web tools, and skills are denied. Read-only LunarMarch roles additionally deny editing and shell execution. Writer roles use OpenCode auto approval only for operations not explicitly denied.
+The adapter runs `opencode --pure run`, attaches a fresh prompt from a file rather than placing its contents in the process argument list, keeps the file argument last so the positional instruction is not parsed as another attachment, disables automatic sharing and updates, sanitizes the inherited environment, closes standard input, enforces a timeout, and injects a temporary agent policy. Each attempt receives writable attempt-local temporary, runtime, cache, data, and state directories. Nested tasks, external-directory access, web tools, and skills are denied. Read-only LunarMarch roles additionally deny editing and shell execution. Writer roles use OpenCode auto approval only for operations not explicitly denied.
 
 Worker stdout and stderr are retained in the run root as review evidence, and OpenCode stdout becomes the worker report. Treat run roots as potentially sensitive task artifacts even though credentials are excluded by design; do not ask workers to print secrets.
 
@@ -60,6 +60,8 @@ python3 scripts/lunarmarch.py launch \
 ```
 
 This route is native and useful for a standalone Codex smoke test. The tradeoff is that the Codex configuration is global for that local Codex installation: switching the default provider to DeepSeek can affect subsequent Codex sessions until the backed-up configuration is restored or the provider is changed again. Keep GPT-5.6 Luna as the normal LunarMarch default unless a deliberate DeepSeek Codex run is being tested.
+
+Codex's project read-only sandbox and its local state storage are separate boundaries. In a containing application sandbox, a read-only Reviewer can require narrowly scoped write access to Codex's own local state database while the project itself remains read-only. LunarMarch does not broaden the project sandbox to solve that host-level requirement.
 
 Official references:
 

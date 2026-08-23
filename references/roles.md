@@ -12,7 +12,7 @@ Implement one independently reviewable objective within declared paths. Use the 
 
 ## Reviewer
 
-Fresh, adversarial, project-read-only review. Treat Builder reports as claims and pointers. Inspect the frozen diff and real mechanism, challenge positive and negative behavior, and report defects or unproved predicates. Do not fix findings.
+Fresh, adversarial, project-read-only review. Treat Builder reports as claims and pointers. Inspect the frozen diff and real mechanism, challenge positive and negative behavior, and report defects or unproved predicates. Do not fix findings. Launcher-run acceptance and invariant checks are authoritative when present. A local test blocked only by read-only cache or temporary-directory restrictions is a local limitation, not a failed or missing launcher check.
 
 ## Fixer
 

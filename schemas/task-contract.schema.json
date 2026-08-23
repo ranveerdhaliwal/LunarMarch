@@ -55,6 +55,21 @@
       "type": "array",
       "maxItems": 64,
       "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$" }
+    },
+    "protected_invariants": {
+      "type": "array",
+      "maxItems": 32,
+      "items": { "type": "string", "minLength": 1, "maxLength": 2000 }
+    },
+    "invariant_commands": {
+      "type": "array",
+      "maxItems": 16,
+      "items": { "type": "string", "minLength": 1, "maxLength": 2000 }
+    },
+    "max_reviewer_attempts": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 8
     }
   }
 }

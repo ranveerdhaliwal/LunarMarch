@@ -16,9 +16,9 @@ This document records what LunarMarch has actually tested, what each test establ
 
 ## Evidence summary
 
-As of 2026-08-22:
+As of 2026-08-23:
 
-- 35 offline automated tests pass.
+- 38 offline automated tests pass.
 - Python compilation passes for the evaluator and orchestration scripts.
 - The Codex skill validator passes.
 - The user-wide installation is a valid symlink to this repository.
@@ -36,7 +36,7 @@ Token counts are the primary efficiency metric. Direct Codex workers now request
 
 ## Reporting new runs
 
-Use [metrics-report-template.md](metrics-report-template.md) for new results. The existing [live smoke result](live-test-results-2026-08-23.md) is the short single-run example. The existing [context-efficiency result](../evals/context-efficiency/results/2026-08-22-contract-v-padding.md) is the repeated-comparison example with aggregate and per-trial token totals.
+Use [metrics-report-template.md](metrics-report-template.md) for new results. The existing [live smoke result](live-test-results-2026-08-23.md) is the short single-run example. The [Studio Core durability march](live-test-results-2026-08-23-studio-core.md) is the multi-phase case with role-level tokens, retries, defects caught, and launcher findings; its [improvement and benchmark plan](studio-core-retrospective-2026-08-23.md) records the resulting changes. The existing [context-efficiency result](../evals/context-efficiency/results/2026-08-22-contract-v-padding.md) is the repeated-comparison example with aggregate and per-trial token totals.
 
 ## Offline automated suite
 
@@ -48,7 +48,7 @@ python3 -m unittest discover -s tests -v
 
 CI runs the suite on Python 3.11, 3.12, and 3.13. CI also compiles `scripts/` and `tests/`, exercises the command interface, and validates that the context-evaluation suite can be planned.
 
-### Orchestration, transport, and integrity tests: 23
+### Orchestration, transport, and integrity tests: 26
 
 | Test | What it verifies |
 |---|---|
@@ -65,7 +65,10 @@ CI runs the suite on Python 3.11, 3.12, and 3.13. CI also compiles `scripts/` an
 | `test_acceptance_rejects_project_movement_after_review` | Parent acceptance fails if the project changes after the accepted review evidence was produced. |
 | `test_external_launcher_pins_luna_and_completes_attempt` | The external writer launcher requests `gpt-5.6-luna`, binds effort, uses the intended approval mode, and records completion. |
 | `test_read_only_launcher_uses_explicit_sandbox_without_auto_approval` | Reviewers receive an explicit read-only sandbox and never automatic write approval. |
-| `test_opencode_launcher_captures_report_and_binds_transport` | An OpenCode/DeepSeek-style worker is bound to its transport, model, and variant; stdout becomes immutable report evidence and the logged command redacts the prompt. |
+| `test_reviewer_packet_defers_authoritative_checks_to_launcher` | Read-only worker packets distinguish launcher-run checks from local cache or temporary-directory limitations. |
+| `test_reviewer_attempt_budget_requires_parent_escalation` | A contract can cap Reviewer attempts and requires parent escalation when the cap is reached. |
+| `test_protected_invariant_detects_regression_inside_allowed_path` | A passing baseline invariant followed by a failed post-work probe rejects an allowed-file regression. |
+| `test_opencode_launcher_captures_report_and_binds_transport` | An OpenCode/DeepSeek-style worker is bound to its transport, model, and variant; file attachment ordering is safe, attempt-local runtime directories are writable, stdout becomes immutable report evidence, and the logged command redacts the prompt. |
 | `test_opencode_readonly_policy_denies_mutation_and_delegation` | OpenCode read-only workers deny edits, shell, nested tasks, and external-directory access and never receive auto approval. |
 | `test_opencode_transport_sanitizes_environment_and_rejects_bad_sandbox` | Third-party workers do not inherit API-key environment variables, and unknown sandbox modes fail closed. |
 | `test_worker_timeout_is_bounded_and_terminal` | A timed-out worker is terminated promptly and recorded with exit code 124 instead of leaving the attempt active. |

@@ -144,7 +144,8 @@ def validate_contract(contract: dict[str, Any]) -> None:
         "depends_on",
     }
     missing = sorted(required - contract.keys())
-    extra = sorted(contract.keys() - required)
+    optional = {"protected_invariants", "invariant_commands", "max_reviewer_attempts"}
+    extra = sorted(contract.keys() - required - optional)
     if missing:
         raise LunarMarchError(f"contract missing fields: {', '.join(missing)}")
     if extra:
@@ -159,7 +160,18 @@ def validate_contract(contract: dict[str, Any]) -> None:
         raise LunarMarchError(f"unknown role_hint: {contract['role_hint']!r}")
     if contract["risk"] not in RISKS:
         raise LunarMarchError(f"unknown risk: {contract['risk']!r}")
-    for field in ("allowed_paths", "acceptance_commands", "requirements", "inputs", "non_goals", "depends_on"):
+    for field in (
+        "allowed_paths",
+        "acceptance_commands",
+        "requirements",
+        "inputs",
+        "non_goals",
+        "depends_on",
+        "protected_invariants",
+        "invariant_commands",
+    ):
+        if field not in contract:
+            continue
         value = contract[field]
         if not isinstance(value, list) or any(not isinstance(item, str) or not item.strip() for item in value):
             raise LunarMarchError(f"{field} must be an array of non-empty strings")
@@ -172,6 +184,10 @@ def validate_contract(contract: dict[str, Any]) -> None:
     for dependency in contract["depends_on"]:
         if not TASK_ID_RE.fullmatch(dependency):
             raise LunarMarchError(f"invalid depends_on task id: {dependency!r}")
+    if "max_reviewer_attempts" in contract:
+        budget = contract["max_reviewer_attempts"]
+        if not isinstance(budget, int) or isinstance(budget, bool) or not 1 <= budget <= 8:
+            raise LunarMarchError("max_reviewer_attempts must be an integer from 1 through 8")
 
 
 def init_run(project_root: Path, run_root: Path, goal: str, mode: str) -> dict[str, Any]:
@@ -358,6 +374,12 @@ def compare_snapshots(baseline: dict[str, Any], current: dict[str, Any]) -> dict
 
 
 def render_prompt(role: str, contract: dict[str, Any]) -> str:
+    verification_guidance = """
+Verification boundary:
+- If the parent launches with --run-checks, launcher-run acceptance and invariant commands are authoritative.
+- Do not call a check unverified solely because a read-only sandbox cannot create caches or temporary files. State the local limitation and inspect the recorded launcher result.
+- Run local checks only when they are safe in the assigned sandbox and add evidence beyond the launcher result.
+"""
     return f"""# LunarMarch worker packet
 
 Role: {role}
@@ -371,6 +393,9 @@ Universal boundaries:
 - Never weaken checks or invent evidence.
 - Do not perform destructive, external, paid, deploy, release, commit, or push operations unless the contract and parent separately authorize them.
 - Return the final report in your final response. The launcher captures it outside the project; do not create a project report file.
+- Start with the contract's exact inputs and allowed paths. Inspect wider repository context only when needed to establish an explicit requirement or protected invariant.
+
+{verification_guidance}
 
 Task contract:
 ```json
@@ -420,6 +445,12 @@ def reservation_errors(
         raw = reservation.get(field)
         if not isinstance(raw, str) or Path(raw).resolve() != expected.resolve():
             errors.append(f"reservation {field} path mismatch")
+    if "baseline_invariants" in reservation:
+        baseline_invariants = Path(reservation["baseline_invariants"]).resolve()
+        if baseline_invariants != (attempt_dir / "baseline-invariants.json").resolve():
+            errors.append("reservation baseline invariants path mismatch")
+        elif not baseline_invariants.is_file() or reservation.get("baseline_invariants_sha256") != sha256_file(baseline_invariants):
+            errors.append("reserved baseline invariants changed after reservation")
     return errors
 
 
@@ -443,6 +474,7 @@ def reserve_attempt(
     effort: str | None = None,
     transport: str = "codex",
     variant: str | None = None,
+    check_timeout: int = 1200,
 ) -> Path:
     run_root = resolve_existing_directory(run_root)
     state = load_state(run_root)
@@ -461,6 +493,16 @@ def reserve_attempt(
             active.append(candidate.name)
     if active:
         raise LunarMarchError(f"task has running_or_unknown attempt(s): {', '.join(active)}")
+    if role == "reviewer" and "max_reviewer_attempts" in contract:
+        review_attempts = 0
+        for attempt_raw in task["attempts"]:
+            attempt_reservation = read_json(resolve_within(run_root, attempt_raw) / "reservation.json")
+            if attempt_reservation.get("role") == "reviewer":
+                review_attempts += 1
+        if review_attempts >= contract["max_reviewer_attempts"]:
+            raise LunarMarchError(
+                f"reviewer attempt budget exhausted ({contract['max_reviewer_attempts']}); parent escalation is required"
+            )
     if effort is None and transport == "codex":
         effort = "medium" if role in {"scout", "sentinel", "clerk", "recovery"} else "high"
     if effort is not None and effort not in {"low", "medium", "high", "xhigh", "max"}:
@@ -469,9 +511,20 @@ def reserve_attempt(
     attempt_dir = run_root / "attempts" / task_id / f"{role}-{attempt_number}"
     attempt_dir.mkdir(parents=True, exist_ok=False, mode=0o700)
     baseline_path = attempt_dir / "baseline.json"
+    baseline_invariants_path = attempt_dir / "baseline-invariants.json"
     prompt_path = attempt_dir / "prompt.md"
     report_path = attempt_dir / "report.md"
     project_root = resolve_existing_directory(state["project_root"])
+    baseline_invariants = run_checks(
+        project_root,
+        contract.get("invariant_commands", []),
+        check_timeout,
+        "baseline-invariant",
+    )
+    atomic_write_json(
+        baseline_invariants_path,
+        {"format": "lunarmarch-baseline-invariants-v1", "checks": baseline_invariants},
+    )
     atomic_write_json(baseline_path, capture_snapshot(project_root, run_root))
     atomic_write_bytes(prompt_path, render_prompt(role, contract).encode("utf-8"))
     sandbox = "workspace-write" if role in WRITE_ROLES else "read-only"
@@ -489,6 +542,8 @@ def reserve_attempt(
         "contract_sha256": sha256_file(contract_path),
         "baseline": str(baseline_path),
         "baseline_sha256": sha256_file(baseline_path),
+        "baseline_invariants": str(baseline_invariants_path),
+        "baseline_invariants_sha256": sha256_file(baseline_invariants_path),
         "prompt": str(prompt_path),
         "prompt_sha256": sha256_file(prompt_path),
         "report": str(report_path),
@@ -513,7 +568,12 @@ def _path_allowed(path: str, patterns: Iterable[str]) -> bool:
     return False
 
 
-def run_checks(project_root: Path, commands: list[str], timeout_seconds: int) -> list[dict[str, Any]]:
+def run_checks(
+    project_root: Path,
+    commands: list[str],
+    timeout_seconds: int,
+    kind: str = "acceptance",
+) -> list[dict[str, Any]]:
     results: list[dict[str, Any]] = []
     for command in commands:
         started = utc_now()
@@ -529,6 +589,7 @@ def run_checks(project_root: Path, commands: list[str], timeout_seconds: int) ->
             )
             results.append(
                 {
+                    "kind": kind,
                     "command": command,
                     "returncode": result.returncode,
                     "started_at": started,
@@ -540,6 +601,7 @@ def run_checks(project_root: Path, commands: list[str], timeout_seconds: int) ->
         except subprocess.TimeoutExpired as exc:
             results.append(
                 {
+                    "kind": kind,
                     "command": command,
                     "returncode": 124,
                     "started_at": started,
@@ -601,6 +663,7 @@ def finish_attempt(
             "output_tokens": None,
             "reasoning_tokens": None,
             "total_tokens": None,
+            "uncached_input_plus_output": None,
         },
     }
     atomic_write_json(terminal_path, terminal)
@@ -629,7 +692,14 @@ def gate_attempt(run_root: Path, attempt_dir: Path) -> dict[str, Any]:
         errors.append("terminal reservation path mismatch")
     if terminal.get("reservation_sha256") != sha256_file(reservation_path):
         errors.append("reservation changed after terminal binding")
-    for field, hash_field in (("contract", "contract_sha256"), ("baseline", "baseline_sha256"), ("prompt", "prompt_sha256")):
+    reserved_bindings = [
+        ("contract", "contract_sha256"),
+        ("baseline", "baseline_sha256"),
+        ("prompt", "prompt_sha256"),
+    ]
+    if "baseline_invariants" in reservation:
+        reserved_bindings.append(("baseline_invariants", "baseline_invariants_sha256"))
+    for field, hash_field in reserved_bindings:
         path = Path(reservation[field]).resolve()
         if not path.is_file():
             errors.append(f"reserved {field} is missing")
@@ -674,15 +744,51 @@ def gate_attempt(run_root: Path, attempt_dir: Path) -> dict[str, Any]:
             errors.append(f"project changes outside allowed_paths: {', '.join(outside[:20])}")
         if not changed:
             warnings.append("write role produced no frozen project changes")
-    expected_commands = contract["acceptance_commands"]
+    expected_commands = [("acceptance", command) for command in contract["acceptance_commands"]]
+    expected_commands.extend(("invariant", command) for command in contract.get("invariant_commands", []))
     checks = terminal.get("checks", [])
     if expected_commands:
-        observed = [item.get("command") for item in checks if isinstance(item, dict)]
+        observed = [
+            (item.get("kind", "acceptance"), item.get("command"))
+            for item in checks
+            if isinstance(item, dict)
+        ]
         if observed != expected_commands:
-            errors.append("acceptance command results are missing, reordered, or mismatched")
+            errors.append("acceptance command results or invariant results are missing, reordered, or mismatched")
         for item in checks:
             if isinstance(item, dict) and item.get("returncode") != 0:
-                errors.append(f"acceptance command failed ({item.get('returncode')}): {item.get('command')}")
+                label = "protected invariant" if item.get("kind") == "invariant" else "acceptance command"
+                errors.append(f"{label} failed ({item.get('returncode')}): {item.get('command')}")
+    baseline_invariants: list[Any] = []
+    if contract.get("invariant_commands", []):
+        raw_baseline = reservation.get("baseline_invariants")
+        if not isinstance(raw_baseline, str):
+            errors.append("baseline invariant record is missing")
+        else:
+            baseline_invariants_path = Path(raw_baseline).resolve()
+            baseline_invariants = read_json(baseline_invariants_path).get("checks", [])
+            if not isinstance(baseline_invariants, list):
+                errors.append("baseline invariant record has invalid checks")
+                baseline_invariants = []
+    baseline_by_command = {
+        item.get("command"): item
+        for item in baseline_invariants
+        if isinstance(item, dict) and isinstance(item.get("command"), str)
+    }
+    post_invariants = {
+        item.get("command"): item
+        for item in checks
+        if isinstance(item, dict) and item.get("kind") == "invariant" and isinstance(item.get("command"), str)
+    }
+    for command in contract.get("invariant_commands", []):
+        baseline = baseline_by_command.get(command)
+        post = post_invariants.get(command)
+        if baseline is None:
+            errors.append(f"baseline invariant result is missing: {command}")
+        elif baseline.get("returncode") != 0:
+            warnings.append(f"protected invariant was already failing at baseline: {command}")
+        elif post is not None and post.get("returncode") != 0:
+            errors.append(f"protected invariant regressed from baseline: {command}")
     gate = {
         "format": "lunarmarch-gate-v1",
         "checked_at": utc_now(),
@@ -727,7 +833,7 @@ def launch_worker(
     executable = shutil.which(worker_bin) if not Path(worker_bin).is_absolute() else worker_bin
     if not executable or not Path(executable).is_file():
         raise LunarMarchError(f"{transport} executable not found: {worker_bin}")
-    attempt_dir = reserve_attempt(run_root, task_id, role, model, effort, transport, variant)
+    attempt_dir = reserve_attempt(run_root, task_id, role, model, effort, transport, variant, check_timeout)
     reservation = read_json(attempt_dir / "reservation.json")
     state = load_state(Path(run_root).resolve())
     project_root = resolve_existing_directory(state["project_root"])
@@ -747,13 +853,29 @@ def launch_worker(
         )
     except ValueError as exc:
         raise LunarMarchError(str(exc)) from exc
+    worker_env = invocation.env.copy()
+    runtime_root: Path | None = None
+    if transport == "opencode":
+        runtime_root = attempt_dir / "opencode-runtime"
+        runtime_paths = {
+            "TMPDIR": runtime_root / "tmp",
+            "TMP": runtime_root / "tmp",
+            "TEMP": runtime_root / "tmp",
+            "XDG_RUNTIME_DIR": runtime_root / "runtime",
+            "XDG_CACHE_HOME": runtime_root / "cache",
+            "XDG_DATA_HOME": runtime_root / "data",
+            "XDG_STATE_HOME": runtime_root / "state",
+        }
+        for path in set(runtime_paths.values()):
+            path.mkdir(parents=True, exist_ok=True, mode=0o700)
+        worker_env.update({name: str(path) for name, path in runtime_paths.items()})
     process = subprocess.Popen(
         invocation.command,
         text=True,
         stdin=subprocess.PIPE if invocation.stdin is not None else subprocess.DEVNULL,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
-        env=invocation.env,
+        env=worker_env,
         start_new_session=os.name == "posix",
     )
     try:
@@ -775,14 +897,16 @@ def launch_worker(
         attempt_dir / "worker.log",
         (
             f"command={json.dumps(invocation.logged_command)}\ntransport={transport}\n"
-            f"exit_code={result.returncode}\nusage={json.dumps(usage, sort_keys=True)}\n\n"
+            f"exit_code={result.returncode}\nusage={json.dumps(usage, sort_keys=True)}\n"
+            f"runtime_root={runtime_root if runtime_root else 'not-applicable'}\n\n"
             f"STDOUT\n{result.stdout}\n\nSTDERR\n{result.stderr}\n"
         ).encode("utf-8", "replace"),
     )
     _, _, contract = contract_for_task(Path(run_root).resolve(), load_state(Path(run_root).resolve()), task_id)
     checks: list[dict[str, Any]] = []
     if result.returncode == 0 and run_acceptance:
-        checks = run_checks(project_root, contract["acceptance_commands"], check_timeout)
+        checks = run_checks(project_root, contract["acceptance_commands"], check_timeout, "acceptance")
+        checks.extend(run_checks(project_root, contract.get("invariant_commands", []), check_timeout, "invariant"))
     terminal = finish_attempt(Path(run_root).resolve(), attempt_dir, result.returncode, checks, usage)
     return attempt_dir, terminal
 
