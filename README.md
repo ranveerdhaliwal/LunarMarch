@@ -28,7 +28,7 @@ See [references/influences.md](references/influences.md) for the projects studie
 
 ## Current status
 
-Version `0.2.0` includes the skill, contract schema, Codex and OpenCode worker transports, durable run state, scope snapshots, integrity gates, checkpointed evaluations, recovery-safe status, examples, and offline tests. The first model-backed Task evaluation completed successfully on 2026-08-22; see [references/live-test-results-2026-08-22.md](references/live-test-results-2026-08-22.md). The complete verification record—including all 35 automated tests, live trials, invalidated diagnostics, evaluator hardening, limitations, and reproduction commands—is in [references/testing-and-evaluation.md](references/testing-and-evaluation.md).
+Version `0.2.0` includes the skill, contract schema, Codex and OpenCode worker transports, durable run state, scope snapshots, integrity gates, checkpointed evaluations, recovery-safe status, examples, and offline tests. The first model-backed Task evaluation completed successfully on 2026-08-22; a one-call Luna smoke also succeeded on 2026-08-23. See [the first Task result](references/live-test-results-2026-08-22.md) and [the latest smoke result](references/live-test-results-2026-08-23.md). The complete verification record—including all 35 automated tests, live trials, invalidated diagnostics, evaluator hardening, limitations, and reproduction commands—is in [references/testing-and-evaluation.md](references/testing-and-evaluation.md).
 
 ## Quick start
 
