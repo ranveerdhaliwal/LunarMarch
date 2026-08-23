@@ -12,6 +12,7 @@ This document records what LunarMarch has actually tested, what each test establ
 - [Interpretation and limitations](#interpretation-and-limitations)
 - [Reproduction](#reproduction)
 - [Plan and estimate for additional fixtures](#plan-and-estimate-for-additional-fixtures)
+- [Reporting new runs](#reporting-new-runs)
 
 ## Evidence summary
 
@@ -32,6 +33,10 @@ The evidence supports compact resolved contracts as the current efficiency defau
 ### Token reporting policy
 
 Token counts are the primary efficiency metric. Direct Codex workers now request JSONL events and persist the final terminal usage record in `terminal.json` and `worker.log`. The record includes input, cached input, uncached input, output, reasoning, and total tokens. OpenCode workers may not expose equivalent counts through their default output, so their fields remain `not reported` until a provider-specific usage event is available. No count is inferred from text length.
+
+## Reporting new runs
+
+Use [metrics-report-template.md](metrics-report-template.md) for new results. The existing [live smoke result](live-test-results-2026-08-23.md) is the short single-run example. The existing [context-efficiency result](../evals/context-efficiency/results/2026-08-22-contract-v-padding.md) is the repeated-comparison example with aggregate and per-trial token totals.
 
 ## Offline automated suite
 

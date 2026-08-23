@@ -102,6 +102,10 @@ A credible next set should cover research synthesis, multi-file implementation, 
 
 The concrete fixture contracts, graders, success evidence, and stop conditions are written out in [references/fixture-roadmap.md](references/fixture-roadmap.md).
 
+### Writing results from another chat
+
+After a Sol, Luna, DeepSeek, or other worker run, record the result in [the metrics report template](references/metrics-report-template.md). Use `references/live-test-results-YYYY-MM-DD.md` for one bounded run, or `evals/<series>/results/` for repeated comparisons. Include model, transport, effort or variant, attempts, gate or quality result, and token fields. Use `not reported` when the provider does not expose usage.
+
 ## Installation as a skill
 
 For every local Codex or OpenCode chat:
